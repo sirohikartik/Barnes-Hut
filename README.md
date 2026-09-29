@@ -1,120 +1,171 @@
-# Relativistic Black Hole N-Body Simulation with Barnes-Hut Octree
+# 🌌 Barnes-Hut Octree Black Hole N-Body Simulation
 
-A high-performance astrophysical N-body simulator written in **C++17**, bound to Python using **pybind11**, and animated with **Matplotlib** (with support for interactive 3D GUI, MP4, and GIF exports).
+[![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=c%2B%2B)](https://en.cppreference.com/w/cpp/17)
+[![Python 3](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python)](https://python.org)
+[![pybind11](https://img.shields.io/badge/binding-pybind11-blue)](https://github.com/pybind/pybind11)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
----
-
-## 🌟 Key Features
-
-1. **Barnes-Hut Octree Algorithm ($O(N \log N)$)**:
-   - Dynamic 3D bounding box computation per frame.
-   - Recursive spatial partitioning into 8 octants with depth limiting.
-   - Multipole Acceptance Criterion (MAC) controlled by opening angle $\theta$ (e.g., $\theta = 0.6$).
-   - High-performance memory-pooled node allocation (zero per-step dynamic memory churn).
-   - Plummer gravitational softening length $\epsilon$ to prevent singularities during close stellar encounters.
-   - Real-time extraction and 3D wireframe visualization of the octree cells.
-
-2. **Astrophysical Black Hole Modeling**:
-   - Central Supermassive Black Hole (SMBH) with configurable mass $M_{BH}$ and speed of light $c$.
-   - **Paczyński-Wiita Pseudo-Newtonian Potential**:
-     $$\Phi_{PW}(r) = -\frac{G M_{BH}}{r - r_s}, \quad \vec{a}_{PW} = -\frac{G M_{BH}}{(r - r_s)^2} \frac{\vec{r}}{r}$$
-     Faithfully reproduces general-relativistic Schwarzschild phenomena:
-     - Event Horizon at $r_s = \frac{2 G M_{BH}}{c^2}$
-     - Photon Sphere at $r_{ph} = 1.5\, r_s$
-     - Innermost Stable Circular Orbit (ISCO) at $r_{ISCO} = 3.0\, r_s$
-     - Relativistic apsidal precession
-   - **Event Horizon Inelastic Capture & Accretion**:
-     - Matter crossing $r \le r_s$ is absorbed by the black hole.
-     - Conservation of momentum and dynamic growth of black hole mass $M_{BH}$ and Schwarzschild radius $r_s$.
-   - **Self-Gravity**: All disk stars and matter interact gravitationally with one another via the Barnes-Hut Octree.
-
-3. **2nd-Order Symplectic Velocity-Verlet Integrator**:
-   - Preserves orbital phase space and energy far better than standard Euler/RK methods.
-
-4. **Pybind11 Python Extension**:
-   - Zero-copy / direct numpy array views for positions, velocities, masses, and active status flags.
-   - Exposes simulation configuration, step execution, and tree introspection directly to Python.
-
-5. **Astrophysical Visualization & Animation**:
-   - Dual-viewport (3D orbital perspective + 2D top-down accretion plane).
-   - Color mapping based on orbital velocity (relativistic Doppler shift / virial temperature).
-   - Dynamic orbital tracers / streak lines.
-   - Wireframe overlay of Barnes-Hut 3D octree bounding boxes.
-   - Live telemetry HUD (simulation time, active bodies, accreted mass, node count, render FPS).
-   - Export directly to **MP4** (via ffmpeg) or **GIF** (via pillow).
+A high-performance astrophysical N-body simulator written in **C++17**, bound seamlessly to Python via **pybind11**, and rendered using **Matplotlib** and **FFmpeg**. The engine calculates self-gravity across thousands of stellar bodies using the **3D Barnes-Hut Octree** algorithm ($O(N \log N)$) while modeling strong-field gravitational physics around a central **Supermassive Black Hole (SMBH)** using the **Paczyński–Wiita potential** and relativistic event horizon capture.
 
 ---
 
-## 📂 Project Structure
+## 🎬 Visualizations & Simulations
 
-```
-black_hole/
-├── include/
-│   ├── vec3.hpp         # 3D vector algebra (dot, cross, norm, operators)
-│   ├── body.hpp         # Body struct (state, mass, flags)
-│   ├── octree.hpp       # Barnes-Hut 3D Octree implementation & bounding box extractor
-│   └── simulation.hpp   # Physics engine, Paczyński-Wiita potential, Verlet integrator
-├── src/
-│   └── bindings.cpp     # Pybind11 Python bindings
-├── setup.py             # Extension build script
-├── CMakeLists.txt       # CMake build configuration
-├── test_sim.py          # Unit test verifying physics and bindings
-├── benchmark.py         # O(N log N) performance benchmark
-├── animate.py           # Visualization script with interactive 3D and export modes
-└── README.md
-```
+### 1. Relativistic Accretion Disk (Self-Gravitating)
+Orbiting plasma disk showing Keplerian shear, spiral density wave formations from inter-stellar self-gravity, and inner matter plunging past the ISCO into the event horizon.
+
+https://github.com/user-attachments/assets/accretion_disk.mp4
+
+<div align="center">
+  <video src="accretion_disk.mp4" width="100%" controls autoplay loop muted playsinline></video>
+  <p><em>Direct MP4 playback (<a href="accretion_disk.mp4">download MP4</a>). Animated GIF preview below:</em></p>
+  <img src="accretion_disk.gif" alt="Accretion Disk Simulation" width="100%" />
+</div>
 
 ---
 
-## 🚀 Quickstart
+### 2. Tidal Disruption Event (TDE)
+A dense star cluster on a parabolic plunge towards the supermassive black hole. The cluster undergoes catastrophic tidal shredding; stars passing within the Schwarzschild radius ($r_s$) are swallowed, dynamically increasing the black hole's mass and expanding its event horizon.
 
-### 1. Build the C++ Extension
+https://github.com/user-attachments/assets/tidal_disruption.mp4
 
-Using the local Python virtual environment:
+<div align="center">
+  <video src="tidal_disruption.mp4" width="100%" controls autoplay loop muted playsinline></video>
+  <p><em>Direct MP4 playback (<a href="tidal_disruption.mp4">download MP4</a>). Animated GIF preview below:</em></p>
+  <img src="tidal_disruption.gif" alt="Tidal Disruption Event" width="100%" />
+</div>
+
+---
+
+### 3. Real-Time 3D Barnes-Hut Octree Space Partitioning
+Wireframe visualization of the octree cells dynamically subdividing 3D space around the black hole. High-density regions generate deeper tree levels, while distant regions are clustered into single multipole nodes.
+
+https://github.com/user-attachments/assets/octree_demo.mp4
+
+<div align="center">
+  <video src="octree_demo.mp4" width="100%" controls autoplay loop muted playsinline></video>
+  <p><em>Direct MP4 playback (<a href="octree_demo.mp4">download MP4</a>). Animated GIF preview below:</em></p>
+  <img src="octree_demo.gif" alt="3D Octree Partitioning" width="100%" />
+</div>
+
+---
+
+## ⚡ Mathematical & Physical Formulation
+
+### 1. Barnes-Hut 3D Octree ($O(N \log N)$)
+Direct $N$-body computation requires evaluating $O(N^2)$ pairwise interactions. The Barnes-Hut algorithm reduces this to $O(N \log N)$ by recursively partitioning 3D space into octants.
+
+- **Multipole Acceptance Criterion (MAC)**:
+  For a query body at position $\vec{r}$ and an octree node with side length $s$ and center of mass $\vec{R}_{\text{com}}$:
+  $$\frac{s}{\|\vec{R}_{\text{com}} - \vec{r}\|} < \theta$$
+  When this condition is met (standard opening angle $\theta \approx 0.5 - 0.7$), the entire subtree is approximated as a single gravitational source located at the node's center of mass.
+- **Plummer Softening Length ($\epsilon$)**:
+  To avoid non-physical infinite accelerations during close stellar encounters:
+  $$\vec{a}_{ij} = \frac{G \, m_j \, (\vec{r}_j - \vec{r}_i)}{\left(\|\vec{r}_j - \vec{r}_i\|^2 + \epsilon^2\right)^{3/2}}$$
+
+### 2. Paczyński–Wiita Pseudo-Newtonian Black Hole
+To incorporate General Relativistic dynamics around a Schwarzschild black hole without the extreme computational overhead of full numerical relativity, the central potential uses the Paczyński–Wiita prescription:
+
+$$\Phi_{\text{PW}}(r) = -\frac{G M_{\text{BH}}}{r - r_s}$$
+
+$$\vec{a}_{\text{PW}}(r) = -\frac{G M_{\text{BH}}}{(r - r_s)^2} \frac{\vec{r}}{r} \quad (r > r_s)$$
+
+This pseudo-Newtonian field reproduces key General Relativity metrics:
+- **Schwarzschild Event Horizon**: $r_s = \frac{2 G M_{\text{BH}}}{c^2}$
+- **Photon Sphere**: $r_{\text{ph}} = 1.5 \, r_s$
+- **Innermost Stable Circular Orbit (ISCO)**: $r_{\text{ISCO}} = 3.0 \, r_s$ (circular orbits inside $r_{\text{ISCO}}$ become dynamically unstable and plunge into the horizon)
+- **Perihelion Advance**: Authentic apsidal precession of eccentric orbits
+
+### 3. Event Horizon Capture & Accretion Dynamics
+When any particle crosses within the event horizon ($r \le r_s$):
+1. The particle is deactivated and flagged as swallowed.
+2. Inelastic collision updates the black hole's momentum and mass:
+   $$M_{\text{BH}} \leftarrow M_{\text{BH}} + m_i, \qquad \vec{P}_{\text{BH}} \leftarrow \vec{P}_{\text{BH}} + m_i \vec{v}_i$$
+3. The Schwarzschild radius expands dynamically:
+   $$r_s \leftarrow \frac{2 G M_{\text{BH}}}{c^2}$$
+
+### 4. Symplectic Velocity-Verlet Integrator
+Second-order symplectic time-integration guarantees phase-space volume preservation and superior energy conservation over long orbital baselines:
+$$\vec{x}(t + \Delta t) = \vec{x}(t) + \vec{v}(t)\Delta t + \frac{1}{2}\vec{a}(t)\Delta t^2$$
+$$\vec{v}(t + \Delta t) = \vec{v}(t) + \frac{1}{2}\Big(\vec{a}(t) + \vec{a}(t + \Delta t)\Big)\Delta t$$
+
+---
+
+## 📊 Performance Benchmark
+
+Benchmarked on Apple Silicon (M-series, 100 simulation steps):
+
+| $N$ Bodies | Octree Nodes | Total Time (100 Steps) | Throughput (Steps/sec) |
+| :---: | :---: | :---: | :---: |
+| **500** | 862 | **0.076 s** | **1,308 steps/s** |
+| **1,000** | 1,744 | **0.216 s** | **463 steps/s** |
+| **2,000** | 3,328 | **0.490 s** | **204 steps/s** |
+| **4,000** | 6,416 | **1.256 s** | **79.6 steps/s** |
+| **8,000** | 12,591 | **3.049 s** | **32.8 steps/s** |
+
+---
+
+## 🛠️ Quickstart Guide
+
+### 1. Prerequisites
+- C++17 compatible compiler (`clang++` or `g++`)
+- Python 3.10+
+- `ffmpeg` (for MP4 rendering)
+
+### 2. Setup Virtual Environment & Build Extension
 ```bash
+# Clone the repository
+git clone git@github-personal:sirohikartik/Barnes-Hut.git
+cd Barnes-Hut
+
+# Create and activate virtual environment
+python3 -m venv .venv
 source .venv/bin/activate
+
+# Install dependencies
+pip install pybind11 numpy matplotlib setuptools wheel
+
+# Compile the C++ pybind11 extension module in-place
 python setup.py build_ext --inplace
 ```
 
-### 2. Run the Benchmark
-
+### 3. Run Benchmark
 ```bash
 python benchmark.py
 ```
-*Expected output: ~460+ steps/second for $N = 1000$ bodies; ~33 steps/second for $N = 8000$ bodies on Apple Silicon.*
 
-### 3. Run the Animation
+### 4. Run the Visualizer
 
-#### Interactive 3D Window:
+#### Interactive 3D Window (Accretion Disk)
 ```bash
 python animate.py --scenario disk --n-bodies 1000
 ```
 
-#### Show Barnes-Hut Octree 3D Wireframe Boxes:
+#### Render with Live 3D Octree Wireframe Cubes
 ```bash
 python animate.py --scenario disk --n-bodies 600 --show-octree
 ```
 
-#### Tidal Disruption Event (Cluster Plunging into SMBH):
+#### Tidal Disruption Simulation (Cluster Plunge)
 ```bash
 python animate.py --scenario tidal_disruption --n-bodies 1000
 ```
 
-#### Render and Save Video (MP4 or GIF):
+#### Export Video or Animated GIF
 ```bash
-# Save to MP4
-python animate.py --scenario disk --n-bodies 1000 --frames 180 --save accretion_disk.mp4 --headless
+# Export high-definition MP4
+python animate.py --scenario disk --n-bodies 1200 --frames 180 --save accretion_disk.mp4 --headless
 
-# Save Tidal Disruption to MP4
+# Export Tidal Disruption MP4
 python animate.py --scenario tidal_disruption --n-bodies 800 --frames 120 --save tidal_disruption.mp4 --headless
 
-# Save to Animated GIF
+# Export Animated GIF
 python animate.py --scenario disk --n-bodies 500 --frames 80 --save accretion_disk.gif --headless
 ```
 
 ---
 
-## 🐍 Python API Example
+## 💻 Python API Usage
 
 ```python
 import black_hole_core
@@ -136,15 +187,48 @@ sim.init_accretion_disk(
     thickness_ratio=0.03
 )
 
-# 4. Step forward using Barnes-Hut octree
+# 4. Advance physics using Barnes-Hut Octree
 sim.steps(num_steps=100, dt=0.01)
 
-# 5. Access numpy arrays directly
-positions = sim.get_positions()    # (N, 3) double array
-velocities = sim.get_velocities()  # (N, 3) double array
-active = sim.get_active()          # (N,) bool array
+# 5. Zero-copy access to NumPy arrays
+positions   = sim.get_positions()    # (N, 3) double array
+velocities  = sim.get_velocities()   # (N, 3) double array
+active_mask = sim.get_active()       # (N,) bool array
 
-# 6. Retrieve Octree cells
-boxes = sim.get_octree_boxes(max_boxes=100) # (K, 5): [cx, cy, cz, half_width, depth]
-print(f"Active bodies: {sim.active_count}, Swallowed: {sim.swallowed_count}")
+# 6. Retrieve Octree cells for 3D visualization
+boxes = sim.get_octree_boxes(max_boxes=200) # (K, 5): [cx, cy, cz, half_width, depth]
+
+print(f"Time: {sim.time:.2f} | Active: {sim.active_count} | Swallowed: {sim.swallowed_count}")
 ```
+
+---
+
+## 📁 Repository Structure
+
+```
+.
+├── include/
+│   ├── vec3.hpp         # 3D vector arithmetic, vector products, and Euclidean norms
+│   ├── body.hpp         # Particle data structure, flags, state vectors
+│   ├── octree.hpp       # Memory-pooled 3D Barnes-Hut octree & wireframe extractor
+│   └── simulation.hpp   # Physics engine, Paczyński-Wiita potential, Verlet integrator
+├── src/
+│   └── bindings.cpp     # Pybind11 module bindings and NumPy array converters
+├── setup.py             # Extension build script
+├── CMakeLists.txt       # CMake build configuration
+├── animate.py           # Multi-viewport animation & video rendering engine
+├── benchmark.py         # Scaling and performance benchmarking script
+├── test_sim.py          # Automated verification test suite
+├── accretion_disk.mp4   # Rendered accretion disk video
+├── tidal_disruption.mp4 # Rendered tidal disruption event video
+├── octree_demo.mp4      # Rendered octree bounding boxes video
+├── accretion_disk.gif   # Rendered accretion disk GIF
+├── tidal_disruption.gif # Rendered tidal disruption event GIF
+├── octree_demo.gif      # Rendered octree bounding boxes GIF
+└── README.md
+```
+
+---
+
+## 📜 License
+Released under the [MIT License](LICENSE).
