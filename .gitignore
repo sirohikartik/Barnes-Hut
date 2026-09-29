@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+env/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.o
+*.obj
+
+# Video/GIF large outputs (optional, can be tracked if user desires)
+# *.mp4
+# *.gif
+
+# macOS
+.DS_Store
