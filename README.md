@@ -3,7 +3,7 @@
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=c%2B%2B)](https://en.cppreference.com/w/cpp/17)
 [![Python 3](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python)](https://python.org)
 [![pybind11](https://img.shields.io/badge/binding-pybind11-blue)](https://github.com/pybind/pybind11)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 
 A high-performance astrophysical N-body simulator written in **C++17**, bound seamlessly to Python via **pybind11**, and rendered using **Matplotlib** and **FFmpeg**. The engine calculates self-gravity across thousands of stellar bodies using the **3D Barnes-Hut Octree** algorithm ($O(N \log N)$) while modeling strong-field gravitational physics around a central **Supermassive Black Hole (SMBH)** using the **Paczyński–Wiita potential** and relativistic event horizon capture.
 
