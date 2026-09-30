@@ -13,6 +13,7 @@ This directory mirrors the structure of the Barnes-Hut Black Hole N-body Simulat
 - [`test_sim.py.md`](file:///Users/kartiksirohi/black_hole/docs/test_sim.py.md): Verification test suite validating Keplerian stability, Paczyński–Wiita potential, and event horizon accretions.
 - [`animate.py.md`](file:///Users/kartiksirohi/black_hole/docs/animate.py.md): High-performance visualizer rendering 3D orbits, color-coded velocity vectors, and dynamic octree wireframe cubes via Matplotlib/FFmpeg.
 - [`run_emulator_experiment.py.md`](file:///Users/kartiksirohi/black_hole/docs/run_emulator_experiment.py.md): Master CLI runner executing data generation, MPS-accelerated diffusion training, ensemble sampling, and internal layer representation probing.
+- [`run_width_and_failure_experiments.py.md`](file:///Users/kartiksirohi/black_hole/docs/run_width_and_failure_experiments.py.md): Master experiment runner executing the multi-width scaling study ($d=32, 64, 128, 256$), failure mode analysis, self-diagnosis error probing, and epistemic uncertainty calibration.
 
 ### 2. C++ Engine Core (`include/` and `src/`)
 - [`include/vec3.hpp.md`](file:///Users/kartiksirohi/black_hole/docs/include/vec3.hpp.md): High-performance 3D vector arithmetic struct, vector products, and Euclidean norms.
@@ -27,4 +28,4 @@ This directory mirrors the structure of the Barnes-Hut Black Hole N-body Simulat
 - [`emulator/model.py.md`](file:///Users/kartiksirohi/black_hole/docs/emulator/model.py.md): Lightweight conditional diffusion denoiser network (~173k params) with Sinusoidal Positional Embeddings and intermediate activation hooks.
 - [`emulator/diffusion.py.md`](file:///Users/kartiksirohi/black_hole/docs/emulator/diffusion.py.md): Gaussian diffusion framework (forward noising schedule, DDPM ancestral sampling, physical displacement inversion, and multi-path ensemble generation).
 - [`emulator/train.py.md`](file:///Users/kartiksirohi/black_hole/docs/emulator/train.py.md): PyTorch training loop on Apple Silicon Metal Performance Shaders (MPS) and dataset activation extraction.
-- [`emulator/prober.py.md`](file:///Users/kartiksirohi/black_hole/docs/emulator/prober.py.md): Physical probing suite testing layer representations $h_l$ with cross-validated Ridge regression, computing $R^2$, RMSE, and Pearson correlation.
+- [`emulator/prober.py.md`](file:///Users/kartiksirohi/black_hole/docs/emulator/prober.py.md): Physical probing suite testing layer representations $h_l$ with cross-validated Ridge regression, self-diagnosis error predictability, success vs failure regime dissection, and epistemic uncertainty calibration.
