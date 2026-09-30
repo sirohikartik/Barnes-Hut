@@ -52,7 +52,7 @@ Generate Artifacts:
 ## 4. Output Visualizations Generated
 
 ### 1. `experiments_output/probing_results_layers.png`
-- **Subplot 1 (Left)**: Layer-wise $R^2$ scores across $h_{\text{input}} \to h_1 \to h_2 \to h_3 \to h_{\text{pre\_head}}$ for:
+- **Subplot 1 (Left)**: Layer-wise $R^2$ scores across $h_{\mathrm{input}} \to h_1 \to h_2 \to h_3 \to h_{\mathrm{out}}$ for:
   - Total Energy $E$
   - Angular Momentum $\|\vec{L}\|$
   - Linear Momentum $\|\vec{P}\|$

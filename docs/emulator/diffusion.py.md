@@ -58,4 +58,4 @@ High-level physical transition method:
 ### 3.6 `sample_physical_ensemble(x_raw, ..., ensemble_size=10)`
 Samples $K$ independent stochastic reverse trajectories to construct an ensemble:
 $$\left[ \hat{x}_{t+1}^{(1)}, \hat{x}_{t+1}^{(2)}, \ldots, \hat{x}_{t+1}^{(K)} \right]$$
-Returns array of shape $(K, \text{batch\_size}, \text{state\_dim})$.
+Returns array of shape $(K, B, D)$ where $B$ is batch size and $D$ is state dimension.

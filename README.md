@@ -14,12 +14,9 @@ A high-performance astrophysical N-body simulator written in **C++17**, bound se
 ### 1. Relativistic Accretion Disk (Self-Gravitating)
 Orbiting plasma disk showing Keplerian shear, spiral density wave formations from inter-stellar self-gravity, and inner matter plunging past the ISCO into the event horizon.
 
-https://github.com/user-attachments/assets/accretion_disk.mp4
-
 <div align="center">
-  <video src="accretion_disk.mp4" width="100%" controls autoplay loop muted playsinline></video>
-  <p><em>Direct MP4 playback (<a href="accretion_disk.mp4">download MP4</a>). Animated GIF preview below:</em></p>
   <img src="accretion_disk.gif" alt="Accretion Disk Simulation" width="100%" />
+  <p><em>Relativistic Accretion Disk (Preview above, <a href="accretion_disk.mp4">Download MP4</a>)</em></p>
 </div>
 
 ---
@@ -27,12 +24,9 @@ https://github.com/user-attachments/assets/accretion_disk.mp4
 ### 2. Tidal Disruption Event (TDE)
 A dense star cluster on a parabolic plunge towards the supermassive black hole. The cluster undergoes catastrophic tidal shredding; stars passing within the Schwarzschild radius ($r_s$) are swallowed, dynamically increasing the black hole's mass and expanding its event horizon.
 
-https://github.com/user-attachments/assets/tidal_disruption.mp4
-
 <div align="center">
-  <video src="tidal_disruption.mp4" width="100%" controls autoplay loop muted playsinline></video>
-  <p><em>Direct MP4 playback (<a href="tidal_disruption.mp4">download MP4</a>). Animated GIF preview below:</em></p>
   <img src="tidal_disruption.gif" alt="Tidal Disruption Event" width="100%" />
+  <p><em>Tidal Disruption Event (Preview above, <a href="tidal_disruption.mp4">Download MP4</a>)</em></p>
 </div>
 
 ---
@@ -40,54 +34,76 @@ https://github.com/user-attachments/assets/tidal_disruption.mp4
 ### 3. Real-Time 3D Barnes-Hut Octree Space Partitioning
 Wireframe visualization of the octree cells dynamically subdividing 3D space around the black hole. High-density regions generate deeper tree levels, while distant regions are clustered into single multipole nodes.
 
-https://github.com/user-attachments/assets/octree_demo.mp4
-
 <div align="center">
-  <video src="octree_demo.mp4" width="100%" controls autoplay loop muted playsinline></video>
-  <p><em>Direct MP4 playback (<a href="octree_demo.mp4">download MP4</a>). Animated GIF preview below:</em></p>
   <img src="octree_demo.gif" alt="3D Octree Partitioning" width="100%" />
+  <p><em>3D Octree Partitioning (Preview above, <a href="octree_demo.mp4">Download MP4</a>)</em></p>
 </div>
 
 ---
 
 ## ⚡ Mathematical & Physical Formulation
 
-### 1. Barnes-Hut 3D Octree ($O(N \log N)$)
+### 1. Barnes-Hut 3D Octree (O(N log N))
 Direct $N$-body computation requires evaluating $O(N^2)$ pairwise interactions. The Barnes-Hut algorithm reduces this to $O(N \log N)$ by recursively partitioning 3D space into octants.
 
 - **Multipole Acceptance Criterion (MAC)**:
-  For a query body at position $\vec{r}$ and an octree node with side length $s$ and center of mass $\vec{R}_{\text{com}}$:
-  $$\frac{s}{\|\vec{R}_{\text{com}} - \vec{r}\|} < \theta$$
+  For a query body at position $\vec{r}$ and an octree node with side length $s$ and center of mass $\vec{R}_{\mathrm{com}}$:
+
+$$
+\frac{s}{\|\vec{R}_{\mathrm{com}} - \vec{r}\|} < \theta
+$$
+
   When this condition is met (standard opening angle $\theta \approx 0.5 - 0.7$), the entire subtree is approximated as a single gravitational source located at the node's center of mass.
+
 - **Plummer Softening Length ($\epsilon$)**:
   To avoid non-physical infinite accelerations during close stellar encounters:
-  $$\vec{a}_{ij} = \frac{G \, m_j \, (\vec{r}_j - \vec{r}_i)}{\left(\|\vec{r}_j - \vec{r}_i\|^2 + \epsilon^2\right)^{3/2}}$$
+
+$$
+\vec{a}_{ij} = \frac{G \, m_j \, (\vec{r}_j - \vec{r}_i)}{\left(\|\vec{r}_j - \vec{r}_i\|^2 + \epsilon^2\right)^{3/2}}
+$$
 
 ### 2. Paczyński–Wiita Pseudo-Newtonian Black Hole
 To incorporate General Relativistic dynamics around a Schwarzschild black hole without the extreme computational overhead of full numerical relativity, the central potential uses the Paczyński–Wiita prescription:
 
-$$\Phi_{\text{PW}}(r) = -\frac{G M_{\text{BH}}}{r - r_s}$$
+$$
+\Phi_{\mathrm{PW}}(r) = -\frac{G M_{\mathrm{BH}}}{r - r_s}
+$$
 
-$$\vec{a}_{\text{PW}}(r) = -\frac{G M_{\text{BH}}}{(r - r_s)^2} \frac{\vec{r}}{r} \quad (r > r_s)$$
+$$
+\vec{a}_{\mathrm{PW}}(r) = -\frac{G M_{\mathrm{BH}}}{(r - r_s)^2} \frac{\vec{r}}{r} \quad (r > r_s)
+$$
 
 This pseudo-Newtonian field reproduces key General Relativity metrics:
-- **Schwarzschild Event Horizon**: $r_s = \frac{2 G M_{\text{BH}}}{c^2}$
-- **Photon Sphere**: $r_{\text{ph}} = 1.5 \, r_s$
-- **Innermost Stable Circular Orbit (ISCO)**: $r_{\text{ISCO}} = 3.0 \, r_s$ (circular orbits inside $r_{\text{ISCO}}$ become dynamically unstable and plunge into the horizon)
+- **Schwarzschild Event Horizon**: $r_s = \frac{2 G M_{\mathrm{BH}}}{c^2}$
+- **Photon Sphere**: $r_{\mathrm{ph}} = 1.5 \, r_s$
+- **Innermost Stable Circular Orbit (ISCO)**: $r_{\mathrm{ISCO}} = 3.0 \, r_s$ (circular orbits inside $r_{\mathrm{ISCO}}$ become dynamically unstable and plunge into the horizon)
 - **Perihelion Advance**: Authentic apsidal precession of eccentric orbits
 
 ### 3. Event Horizon Capture & Accretion Dynamics
 When any particle crosses within the event horizon ($r \le r_s$):
 1. The particle is deactivated and flagged as swallowed.
 2. Inelastic collision updates the black hole's momentum and mass:
-   $$M_{\text{BH}} \leftarrow M_{\text{BH}} + m_i, \qquad \vec{P}_{\text{BH}} \leftarrow \vec{P}_{\text{BH}} + m_i \vec{v}_i$$
+
+$$
+M_{\mathrm{BH}} \leftarrow M_{\mathrm{BH}} + m_i, \qquad \vec{P}_{\mathrm{BH}} \leftarrow \vec{P}_{\mathrm{BH}} + m_i \vec{v}_i
+$$
+
 3. The Schwarzschild radius expands dynamically:
-   $$r_s \leftarrow \frac{2 G M_{\text{BH}}}{c^2}$$
+
+$$
+r_s \leftarrow \frac{2 G M_{\mathrm{BH}}}{c^2}
+$$
 
 ### 4. Symplectic Velocity-Verlet Integrator
 Second-order symplectic time-integration guarantees phase-space volume preservation and superior energy conservation over long orbital baselines:
-$$\vec{x}(t + \Delta t) = \vec{x}(t) + \vec{v}(t)\Delta t + \frac{1}{2}\vec{a}(t)\Delta t^2$$
-$$\vec{v}(t + \Delta t) = \vec{v}(t) + \frac{1}{2}\Big(\vec{a}(t) + \vec{a}(t + \Delta t)\Big)\Delta t$$
+
+$$
+\vec{x}(t + \Delta t) = \vec{x}(t) + \vec{v}(t)\Delta t + \frac{1}{2}\vec{a}(t)\Delta t^2
+$$
+
+$$
+\vec{v}(t + \Delta t) = \vec{v}(t) + \frac{1}{2}\Big(\vec{a}(t) + \vec{a}(t + \Delta t)\Big)\Delta t
+$$
 
 ---
 
@@ -217,24 +233,53 @@ Ground Truth Simulator ──► Trajectories x_0, x_1, ..., x_T ──► Train
 ```
 
 ### 1. Conceptual Framework & Pipeline
-1. **Ground Truth Trajectories ($x_0, x_1, \ldots, x_T$)**:
+1. **Ground Truth Trajectories ($x_0, x_1, \dots, x_T$)**:
    The Barnes-Hut simulator generates authentic relativistic orbital trajectories under the Paczyński–Wiita potential and self-gravity. Each physical state contains coordinates and velocities:
-   $$x_t = [\mathbf{p}_1, \mathbf{v}_1, \ldots, \mathbf{p}_N, \mathbf{v}_N, \mathbf{p}_{\text{BH}}, \mathbf{v}_{\text{BH}}] \in \mathbb{R}^D$$
+
+$$
+x_t = [\mathbf{p}_1, \mathbf{v}_1, \dots, \mathbf{p}_N, \mathbf{v}_N, \mathbf{p}_{\mathrm{BH}}, \mathbf{v}_{\mathrm{BH}}] \in \mathbb{R}^D
+$$
+
 2. **Diffusion Physics Emulator**:
    A lightweight conditional diffusion model is trained using **Apple Silicon Metal Performance Shaders (MPS)** to generate future physical states:
-   $$x_t \longrightarrow \text{Diffusion Emulator} \longrightarrow \hat{x}_{t+1}$$
+
+$$
+x_t \longrightarrow \text{Diffusion Emulator} \longrightarrow \hat{x}_{t+1}
+$$
+
 3. **Stochastic Ensemble Generation**:
    Sampling the reverse diffusion chain $K$ times with different random seeds yields an ensemble:
-   $$\hat{x}_{t+1}^{(1)}, \hat{x}_{t+1}^{(2)}, \ldots, \hat{x}_{t+1}^{(K)}$$
+
+$$
+\hat{x}_{t+1}^{(1)}, \hat{x}_{t+1}^{(2)}, \dots, \hat{x}_{t+1}^{(K)}
+$$
+
    The ensemble mean provides the predicted trajectory while the variance measures epistemic uncertainty.
+
 4. **Internal Representation Probing ($h_l$)**:
    Hidden layer activations $h_l$ are extracted across all network layers:
-   $$h_l \in \{ h_{\text{input}}, h_1, h_2, h_3, h_{\text{pre\_head}} \}$$
+
+$$
+h_l \in \{ h_{\mathrm{input}}, h_1, h_2, h_3, h_{\mathrm{out}} \}
+$$
+
    Linear probes are trained to map representations directly to physical invariants and quantities computed from the ground truth simulator:
-   $$h_l \longrightarrow \text{Total Energy } E$$
-   $$h_l \longrightarrow \text{Angular Momentum } \|\vec{L}\|$$
-   $$h_l \longrightarrow \text{Linear Momentum } \|\vec{P}\|$$
-   $$h_l \longrightarrow \text{Positions } \mathbf{p}, \quad \text{Velocities } \mathbf{v}$$
+
+$$
+h_l \longrightarrow \text{Total Energy } E
+$$
+
+$$
+h_l \longrightarrow \text{Angular Momentum } \|\vec{L}\|
+$$
+
+$$
+h_l \longrightarrow \text{Linear Momentum } \|\vec{P}\|
+$$
+
+$$
+h_l \longrightarrow \text{Positions } \mathbf{p}, \quad \text{Velocities } \mathbf{v}
+$$
 
 ---
 
@@ -252,7 +297,7 @@ Ground Truth Simulator ──► Trajectories x_0, x_1, ..., x_T ──► Train
 
 #### Quantitative Probing Scores (Held-Out Test Set)
 
-| Physical Target | Input Representation ($h_{\text{input}}$) | Layer 1 ($h_1$) | Layer 2 ($h_2$) | Layer 3 ($h_3$) | Pre-Head ($h_{\text{pre\_head}}$) | Best $R^2$ Score |
+| Physical Target | Input Representation ($h_{\mathrm{input}}$) | Layer 1 ($h_1$) | Layer 2 ($h_2$) | Layer 3 ($h_3$) | Pre-Head ($h_{\mathrm{out}}$) | Best $R^2$ Score |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Angular Momentum ($\|\vec{L}\|$)** | **0.8836** | 0.7711 | 0.7684 | 0.7339 | 0.6649 | **0.8836** |
 | **Potential Energy ($U$)** | **0.8855** | 0.8454 | 0.7815 | 0.7457 | 0.8155 | **0.8855** |
@@ -270,7 +315,7 @@ Ground Truth Simulator ──► Trajectories x_0, x_1, ..., x_T ──► Train
    - **Angular Momentum** ($\|\vec{L}\|$) achieves the highest decodability ($R^2 = 0.8836$) and remains linearly decodable through the deepest layers ($R^2 > 0.66 - 0.77$). In a central gravitational field, preserving angular momentum is essential to maintain radial stability and prevent unphysical orbital collapse.
    - **Potential Energy** ($U$) is strongly linearly decodable ($R^2 = 0.8855$) because the network must encode proximity to the Schwarzschild event horizon to correctly scale acceleration kicks.
 2. **Hierarchical Abstraction:**
-   - **Early Layers ($h_{\text{input}}, h_1$)**: Exhibit maximum decodability for raw coordinates (Positions $R^2 = 0.867$, Velocities $R^2 = 0.849$).
+   - **Early Layers ($h_{\mathrm{input}}, h_1$)**: Exhibit maximum decodability for raw coordinates (Positions $R^2 = 0.867$, Velocities $R^2 = 0.849$).
    - **Intermediate Layers ($h_2, h_3$)**: Coordinates are transformed into higher-order interaction features, yet physical invariants remain strongly accessible.
 3. **Information Crystallization during Reverse Diffusion:**
    - At diffusion step $k=19$ (pure noise prior), physical accessibility is near zero ($R^2 < 0.20$).

@@ -60,7 +60,7 @@ Simulates a single $N$-body trajectory around the SMBH.
 - `bh_mass`, `c`, `G`, `softening`: Simulation physical constants.
 
 #### Returns
-- `states`: Shape $(T, \text{State\_dim})$ NumPy array where $\text{State\_dim} = N \times 6 + 6$.
+- `states`: Shape $(T, D)$ NumPy array where $D = N \times 6 + 6$.
 - `physics_list`: Length-$T$ list of physical property dictionaries.
 
 ---
