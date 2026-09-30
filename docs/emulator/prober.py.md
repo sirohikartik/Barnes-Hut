@@ -54,3 +54,28 @@ Fits a probe mapping normalized representations to normalized physical targets a
 4. **Pearson Correlation Coefficient ($r$)**:
    $$r = \frac{\sum (y_i - \bar{y})(\hat{y}_i - \bar{\hat{y}})}{\sqrt{\sum (y_i - \bar{y})^2 \sum (\hat{y}_i - \bar{\hat{y}})^2}}$$
    Measures linear alignment between predicted and true physical values regardless of scale shifts.
+
+---
+
+## 4. Failure Mode & Self-Diagnosis Probing Methods
+
+### Method: `evaluate_error_predictability(train_h, test_h, train_errors, test_errors)`
+Tests whether internal neural activations $h_l$ can predict the model's own future error magnitude before state emission:
+$$h_l \longrightarrow \|\hat{x}_{t+1} - x_{t+1}^{\mathrm{GT}}\|$$
+- Fits a cross-validated Ridge probe mapping normalized hidden representations to transition error magnitudes.
+- Computes held-out **$R^2$**, **RMSE**, **Pearson correlation ($r$)**, and **Spearman rank correlation ($\rho$)**.
+- High positive correlation ($r > 0.60$) indicates that intermediate layers encode self-diagnostic signals of impending failure.
+
+### Method: `evaluate_success_vs_failure_regimes(train_h, test_h, train_targets, test_targets, test_errors, quantile)`
+Dissects representation quality when the model is successful versus when it enters a failure regime:
+- Partitions test transitions into:
+  - **Success Regime**: Lowest error quantile (e.g. lowest 25% error transitions).
+  - **Failure Regime**: Highest error quantile (e.g. highest 25% error transitions).
+- Evaluates linear probe $R^2$ on each regime independently to measure representation degradation $\Delta R^2 = R^2_{\mathrm{succ}} - R^2_{\mathrm{fail}}$.
+- Quantifies which physical quantities (coordinates, angular momentum, energy) suffer structural collapse during failure.
+
+### Method: `evaluate_uncertainty_correlation(ensemble_stds, rollout_errors)`
+Quantifies the relationship between the diffusion model's stochastic ensemble variance and ground truth error:
+- Computes Pearson correlation $r$ and Spearman rank correlation $\rho$ between epistemic spread $\sigma_{\mathrm{ensemble}}$ and true error.
+- Evaluates the uncertainty spike ratio across top vs bottom error deciles to test whether diffusion ensemble spread serves as an intrinsic failure detector.
+

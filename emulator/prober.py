@@ -132,3 +132,165 @@ class PhysicalProbeSuite:
             }
 
         return results
+
+    def evaluate_error_predictability(
+        self,
+        train_h: np.ndarray,
+        test_h: np.ndarray,
+        train_errors: Dict[str, np.ndarray],
+        test_errors: Dict[str, np.ndarray],
+    ) -> Dict[str, Dict[str, float]]:
+        """
+        Evaluates whether internal representations h_l linearly predict
+        the model's own failure modes and rollout error magnitudes.
+        """
+        from sklearn.linear_model import RidgeCV
+
+        h_mean = np.mean(train_h, axis=0)
+        h_std = np.std(train_h, axis=0) + 1e-7
+        norm_train_h = (train_h - h_mean) / h_std
+        norm_test_h = (test_h - h_mean) / h_std
+
+        results = {}
+        for err_key in train_errors.keys():
+            y_train = train_errors[err_key].ravel()
+            y_test = test_errors[err_key].ravel()
+
+            y_mean = np.mean(y_train)
+            y_std = np.std(y_train) + 1e-7
+            norm_y_train = (y_train - y_mean) / y_std
+
+            probe = RidgeCV(alphas=[1e-4, 1e-2, 0.1, 1.0, 10.0, 100.0])
+            probe.fit(norm_train_h, norm_y_train)
+            norm_pred = probe.predict(norm_test_h)
+            y_pred = norm_pred * y_std + y_mean
+
+            r2 = float(r2_score(y_test, y_pred))
+            rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
+            corr = 0.0
+            if np.std(y_pred) > 1e-7 and np.std(y_test) > 1e-7:
+                corr = float(pearsonr(y_test, y_pred)[0])
+
+            from scipy.stats import spearmanr
+            spear_val, _ = spearmanr(y_test, y_pred)
+
+            results[err_key] = {
+                "r2": r2,
+                "rmse": rmse,
+                "corr": corr,
+                "spearman_rho": float(spear_val),
+            }
+        return results
+
+    def evaluate_success_vs_failure_regimes(
+        self,
+        train_h: np.ndarray,
+        test_h: np.ndarray,
+        train_targets: Dict[str, np.ndarray],
+        test_targets: Dict[str, np.ndarray],
+        test_errors: np.ndarray,
+        quantile: float = 0.25,
+    ) -> Dict[str, Dict[str, Dict[str, float]]]:
+        """
+        Dissects representation fidelity when the model succeeds vs fails.
+        Partitions test set into low-error (success) and high-error (failure) regimes.
+        """
+        from sklearn.linear_model import RidgeCV
+
+        h_mean = np.mean(train_h, axis=0)
+        h_std = np.std(train_h, axis=0) + 1e-7
+        norm_train_h = (train_h - h_mean) / h_std
+        norm_test_h = (test_h - h_mean) / h_std
+
+        flat_errs = test_errors.ravel()
+        q_low = np.quantile(flat_errs, quantile)
+        q_high = np.quantile(flat_errs, 1.0 - quantile)
+
+        success_idx = np.where(flat_errs <= q_low)[0]
+        failure_idx = np.where(flat_errs >= q_high)[0]
+
+        regimes = {
+            "success": success_idx,
+            "failure": failure_idx,
+        }
+
+        results = {"success": {}, "failure": {}}
+
+        for target_name in train_targets.keys():
+            y_train = train_targets[target_name]
+            y_test = test_targets[target_name]
+
+            if y_train.ndim == 2 and y_train.shape[1] == 1:
+                y_train_flat = y_train.ravel()
+                y_test_flat = y_test.ravel()
+            else:
+                y_train_flat = y_train
+                y_test_flat = y_test
+
+            y_mean = np.mean(y_train_flat, axis=0)
+            y_std = np.std(y_train_flat, axis=0) + 1e-7
+            norm_y_train = (y_train_flat - y_mean) / y_std
+
+            probe = RidgeCV(alphas=[1e-4, 1e-2, 0.1, 1.0, 10.0])
+            probe.fit(norm_train_h, norm_y_train)
+
+            for reg_name, idxs in regimes.items():
+                if len(idxs) < 2:
+                    continue
+                sub_norm_test_h = norm_test_h[idxs]
+                sub_y_test = y_test_flat[idxs]
+
+                sub_norm_pred = probe.predict(sub_norm_test_h)
+                sub_y_pred = sub_norm_pred * y_std + y_mean
+
+                r2 = float(r2_score(sub_y_test, sub_y_pred))
+                rmse = float(np.sqrt(mean_squared_error(sub_y_test, sub_y_pred)))
+                corr = 0.0
+                if sub_y_test.ndim == 1 or sub_y_test.shape[1] == 1:
+                    ft = sub_y_test.ravel()
+                    fp = sub_y_pred.ravel()
+                    if np.std(fp) > 1e-7 and np.std(ft) > 1e-7:
+                        corr = float(pearsonr(ft, fp)[0])
+                else:
+                    corrs = [
+                        pearsonr(sub_y_test[:, j], sub_y_pred[:, j])[0]
+                        for j in range(sub_y_test.shape[1])
+                        if np.std(sub_y_pred[:, j]) > 1e-7 and np.std(sub_y_test[:, j]) > 1e-7
+                    ]
+                    corr = float(np.mean(corrs)) if len(corrs) > 0 else 0.0
+
+                results[reg_name][target_name] = {
+                    "r2": r2,
+                    "rmse": rmse,
+                    "corr": corr,
+                }
+
+        return results
+
+    @staticmethod
+    def evaluate_uncertainty_correlation(
+        ensemble_stds: np.ndarray,
+        rollout_errors: np.ndarray,
+    ) -> Dict[str, float]:
+        """
+        Evaluates Pearson correlation between diffusion ensemble spread
+        (epistemic uncertainty) and actual ground truth prediction error.
+        """
+        stds = ensemble_stds.ravel()
+        errs = rollout_errors.ravel()
+
+        corr = 0.0
+        if np.std(stds) > 1e-7 and np.std(errs) > 1e-7:
+            corr = float(pearsonr(stds, errs)[0])
+
+        # Spearman rank correlation
+        from scipy.stats import spearmanr
+        spear_corr, _ = spearmanr(stds, errs)
+
+        return {
+            "pearson_r": corr,
+            "spearman_rho": float(spear_corr),
+            "mean_uncertainty": float(np.mean(stds)),
+            "mean_error": float(np.mean(errs)),
+        }
+
