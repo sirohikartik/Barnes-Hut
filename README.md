@@ -501,5 +501,9 @@ Execute both experiments in ~25 seconds on a base M1 Air:
 ---
 
 ## 📜 License
-Released under the [MIT License](LICENSE).
+Copyright © 2026 Kartik Sirohi. All rights reserved.
+
+This repository and its contents are provided for viewing and evaluation only. No permission is granted to copy, modify, distribute, sublicense, publish, or use this work for commercial purposes without prior written permission from the copyright holder.
+
+The research methods, experimental results, documentation, and original software contained in this repository are protected by applicable intellectual property laws.
 
