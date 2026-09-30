@@ -18,5 +18,16 @@ dist/
 # *.mp4
 # *.gif
 
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
 # macOS
 .DS_Store

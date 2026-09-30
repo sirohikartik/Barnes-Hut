@@ -348,7 +348,7 @@ How does neural representation capacity affect generative trajectory emulation a
 
 <div align="center">
   <img src="experiments_output/model_width_comparison.png" alt="Diffusion Model Width Scaling Study" width="100%" />
-  <p><em>Figure 3: Diffusion Model Width Scaling Study. (Top-Left) Training loss convergence vs model width. (Top-Right) 30-step autoregressive rollout RMSE accumulation. (Bottom-Left) Total energy conservation violation drift. (Bottom-Right) Monotonic scaling of physical invariant linear decodability ($R^2$) with hidden dimension.</em></p>
+  <p><em>Figure 3: Diffusion Model Width Scaling Study. (Top-Left) Training loss convergence vs model width. (Top-Right) 30-step autoregressive rollout RMSE accumulation. (Bottom-Left) Total energy conservation violation drift. (Bottom-Right) Scaling of physical invariant linear decodability ($R^2$) with hidden dimension.</em></p>
 </div>
 
 #### Quantitative Model Width Comparison
@@ -361,55 +361,63 @@ How does neural representation capacity affect generative trajectory emulation a
 | **$d = 256$** | 535,782 | **0.5209** | **0.5311** | 18.465 | **0.7754** | **0.9340** | **0.9466** | 18.5 ms | 5.38 s |
 
 #### Key Insights from Width Scaling:
-1. **Monotonic Crystallization of Physical Invariants:**
-   - As model width increases from $d=32$ to $d=256$, internal representation decodability scales monotonically:
-     - **Positions ($\mathbf{p}$)**: $R^2$ rises from $0.2968 \to 0.9466$ ($+219\%$ improvement).
-     - **Angular Momentum ($\|\vec{L}\|$):** $R^2$ rises from $0.2553 \to 0.9340$ ($+266\%$ improvement).
-     - **Total Energy ($E$):** $R^2$ rises from $0.3602 \to 0.7754$ ($+115\%$ improvement).
-   - Wider networks develop linearly disentangled feature spaces where physical conservation invariants become directly accessible via simple linear projections.
-2. **Loss vs. Multi-Step Autoregressive Generalization:**
-   - Training loss decreases dramatically from $0.9673$ ($d=32$) down to $0.5209$ ($d=256$), confirming superior single-step denoising fidelity.
-   - However, for multi-step autoregressive rollouts, overparameterized models without symplectic inductive biases can experience sharper out-of-distribution drift over long horizons ($T=30$), highlighting the classical trade-off between single-step conditional likelihood and long-horizon dynamical stability.
-3. **M1 Air Compute Profile:**
-   - All four configurations train in under 6 seconds per model on Apple Silicon MPS with unified memory consumption below 250 MB, making architecture search feasible on low-power laptops.
+1. **Central Finding — Tension Between Single-Step Loss and Autoregressive Rollout Stability:**
+   - At $d=256$, single-step training loss drops to $0.5209$ and validation loss to $0.5311$ (a $46.2\%$ reduction compared to $d=32$).
+   - However, over a 30-step continuous autoregressive rollout, its RMSE surges to $18.465$.
+   - Conversely, the narrowest model ($d=32$) has higher one-step loss ($0.9673$), but maintains substantially superior rollout stability (RMSE $6.966$, a $62.3\%$ reduction in trajectory error relative to $d=256$).
+   - In the absence of symplectic or Hamiltonian inductive constraints, wider unconstrained denoisers fit high-frequency residuals that compound recursively during autoregression, accelerating orbital phase drift.
+2. **Physical Invariant Linear Decodability Across Widths:**
+   - As model width increases, internal representation decodability generally improves:
+     - **Angular Momentum ($\|\vec{L}\|$):** Exhibits a strict monotonic increase across all widths: $R^2$ rises from $0.2553 \to 0.4342 \to 0.7785 \to 0.9340$ ($+266\%$ gain).
+     - **Total Energy ($E$):** Generally improves from $0.3602 \to 0.7754$ ($+115\%$ gain), with a minor dip at $d=64$ ($R^2 = 0.2590$).
+     - **Positions ($\mathbf{p}$):** Scales monotonically from $0.2968 \to 0.9466$ ($+219\%$ gain).
+   - Wider networks develop linearly structured latent manifolds where physical quantities become accessible via simple linear projections.
+3. **Dataset Scope & Local Compute Efficiency:**
+   - The dataset consists of 30 trajectories of 60 steps each ($N=16$ bodies, 2 dedicated held-out rollout trajectories).
+   - All four configurations train in under 6 seconds per model on Apple Silicon MPS with unified memory consumption below 250 MB.
 
 ---
 
-### 6. Probing Failure Modes: Self-Diagnosis & Representation Collapse
+### 6. Probing Failure Modes: Error Predictability & Representation Breakdown
 
-When the generative diffusion emulator makes incorrect predictions or diverges from true relativistic physics, **can we probe the failure? Does the internal latent representation encode its own upcoming error before it outputs state predictions?**
+When the generative diffusion emulator makes incorrect predictions or diverges from true pseudo-relativistic physics, **what occurs internally? Do intermediate layer representations correlate with impending prediction errors, and does this predictive capacity hold beyond what is already determined by the physical input state?**
 
 <div align="center">
-  <img src="experiments_output/failure_mode_probing.png" alt="Failure Mode Probing and Self-Diagnosis Analysis" width="100%" />
-  <p><em>Figure 4: Probing Failure Modes and Neural Representation Collapse. (Top-Left) Phase space illustrating ground truth orbital trajectories vs diffusion rollout divergence near the Schwarzschild event horizon ($r_s$) and ISCO ($3 r_s$). (Top-Right) Self-Diagnosis Probing: Pearson linear correlation ($r$) and Spearman rank correlation ($\rho$) predicting transition error magnitude directly from internal activations $h_l$. (Bottom-Left) Representation quality collapse: degradation of physical invariant decodability in failure regimes. (Bottom-Right) Epistemic uncertainty ($\sigma_{\mathrm{ensemble}}$) distribution across test transitions.</em></p>
+  <img src="experiments_output/failure_mode_probing.png" alt="Failure Mode Probing and Error Predictability Analysis" width="100%" />
+  <p><em>Figure 4: Probing Failure Modes and Neural Representation Breakdown. (Top-Left) Phase space illustrating ground truth orbital trajectories vs diffusion rollout divergence near the Schwarzschild event horizon ($r_s$) and ISCO ($3 r_s$). (Top-Right) Error Predictability Probing: Pearson linear correlation ($r$) and Spearman rank correlation ($\rho$) predicting transition error magnitude from intermediate activations $h_l$ and state baselines. (Bottom-Left) Representation quality degradation: drop in physical invariant decodability during failure regimes. (Bottom-Right) Ensemble predictive spread ($\sigma_{\mathrm{ensemble}}$) distribution across test transitions.</em></p>
 </div>
 
 #### 1. Anatomy of Astrophysical Failure Modes
-In black hole N-body dynamics, three primary failure mechanisms govern model breakdown:
+In pseudo-relativistic black hole N-body dynamics, three primary failure mechanisms govern model breakdown:
 1. **Strong-Field Horizon Plunge (ISCO Instability):**
    Within $r \le 3.0 \, r_s$, the Paczyński–Wiita potential gradient $\propto (r - r_s)^{-2}$ becomes steep. Slight coordinate under-predictions cause artificial runaway plunges past the event horizon.
 2. **Autoregressive Orbital Phase Drift:**
    Small velocity residuals compound over 30+ timesteps, leading to orbital eccentricity elongation and phase desynchronization.
 3. **Non-Symplectic Energy Drift:**
-   Standard neural network updates lack symplectic phase-space volume preservation, resulting in secular energy growth over extended rollout horizons.
+   Standard neural network updates lack symplectic phase-space volume preservation, resulting in secular energy growth over extended rollout horizons. Note that Velocity-Verlet preserves phase-space volume for the smooth Hamiltonian dynamics, while horizon capture introduces an abrupt non-Hamiltonian termination event.
 
-#### 2. Self-Diagnosis: Can Internal Activations Predict Impending Failure?
-We trained linear probes on intermediate representations $h_l$ across all network layers to predict the model's own future transition error $\|\hat{x}_{t+1} - x_{t+1}^{\mathrm{GT}}\|$ on held-out test transitions:
+#### 2. Error Predictability: Can Hidden Representations Predict Impending Error?
+We trained linear probes on intermediate representations $h_l$ across all network layers to predict future single-step rollout error magnitude $\|\hat{x}_{t+1} - x_{t+1}^{\mathrm{GT}}\|$ on held-out test transitions, comparing against explicit state-controlled baselines:
 
-| Layer ($h_l$) | Pearson Linear Correlation ($r$) | Spearman Rank Correlation ($\rho$) | Self-Diagnosis Capacity |
-| :--- | :---: | :---: | :--- |
-| **Input Projection ($h_{\mathrm{input}}$)** | **0.6268** | 0.1264 | Early state geometric warning |
-| **ResBlock 1 ($h_1$)** | 0.5437 | 0.1190 | Intermediate spatial feature tracking |
-| **ResBlock 2 ($h_2$)** | 0.2031 | 0.1255 | Latent mixing & transformation |
-| **ResBlock 3 ($h_3$)** | 0.5542 | 0.1388 | Re-crystallization of error magnitude |
-| **Pre-Head Features ($h_{\mathrm{pre\_head}}$)** | **0.6852** | **0.1601** | **Peak self-diagnostic awareness ($r \approx 0.69$)** |
+| Representation / Baseline | Pearson Corr ($r$) | Spearman Corr ($\rho$) | Held-Out $R^2$ | Diagnostic Role |
+| :--- | :---: | :---: | :---: | :--- |
+| **Physical Features ($r_{\min}, v, \|\vec{L}\|, d_{\mathrm{ISCO}}$)** | **0.7467** | **0.1972** | **0.5486** | Physical difficulty baseline |
+| **Raw Input State ($x_t \in \mathbb{R}^{102}$)** | 0.4639 | 0.1359 | 0.2139 | Kinematic state baseline |
+| **Input Projection ($h_{\mathrm{input}}$)** | 0.6268 | 0.1264 | -4.099 | Early geometric projection |
+| **ResBlock 1 ($h_1$)** | 0.5437 | 0.1190 | -4.819 | Relational spatial tracking |
+| **ResBlock 2 ($h_2$)** | 0.2031 | 0.1255 | -3.577 | Non-linear feature transformation |
+| **ResBlock 3 ($h_3$)** | 0.5542 | 0.1388 | -3.572 | Non-monotonic error recovery |
+| **Pre-Head Features ($h_{\mathrm{pre\_head}}$)** | **0.6852** | 0.1601 | -4.291 | Peak activation correlation |
+| **Residualized Probe ($h_{\mathrm{pre\_head}} \to e_{\mathrm{res}}$)** | **0.4318** | **0.1905** | --- | **Signal beyond physical input state** |
 
-> [!IMPORTANT]
-> **Key Finding — Neural Self-Diagnosis:**
-> The pre-head activation layer $h_{\mathrm{pre\_head}}$ achieves a Pearson correlation of **$r = 0.6852$** with the ground truth prediction error! This proves that the internal neural state already linearly encodes when it is operating in an unreliable or failure-prone regime *before* the output linear projection emits the physical delta update.
+> [!NOTE]
+> **Key Finding — Error Predictability and State-Controlled Baseline:**
+> Probing simple physical features ($r_{\min}/r_s$, velocity, $\|\vec{L}\|$, distance to ISCO) achieves $r = 0.7467$ ($R^2 = 0.5486$), confirming that a substantial portion of error predictability is driven by intrinsic physical state difficulty (e.g. proximity to the ISCO). 
+> 
+> Crucially, when evaluating residualized error ($e_{\mathrm{res}} = e_{\mathrm{actual}} - \hat{e}_{\mathrm{baseline}}(x_t)$), probing $h_{\mathrm{pre\_head}}$ yields a significant correlation of **$r = 0.4318$** ($\rho = 0.1905$). This demonstrates that intermediate neural activations retain predictive signal regarding the model's impending error even after linearly regressing out the physical input state.
 
-#### 3. Representation Quality Collapse (Success vs. Failure Regimes)
-We partitioned test set transitions into the **Success Regime** (lowest 25% error transitions) and **Failure Regime** (highest 25% error transitions), probing physical invariant recoverability in each subset:
+#### 3. Representation Quality Degradation (Success vs. Failure Regimes)
+We partitioned 331 held-out test transitions into the **Success Regime** ($n=83$, lowest 25% error, $e \le 1.0104$) and **Failure Regime** ($n=83$, highest 25% error, $e \ge 1.6038$):
 
 | Physical Target Probed | Success Regime ($R^2$) | Failure Regime ($R^2$) | Degradation ($\Delta R^2$) |
 | :--- | :---: | :---: | :---: |
@@ -418,9 +426,12 @@ We partitioned test set transitions into the **Success Regime** (lowest 25% erro
 | **Potential Energy ($U$)** | 0.5521 | 0.6842 | $-0.1321$ |
 | **Velocities ($\mathbf{v}_1 \dots \mathbf{v}_N$)** | 0.3264 | 0.5328 | $-0.2064$ |
 
-When failure occurs, **coordinate and angular momentum representation fidelity collapses drastically** (coordinate decodability drops from $0.7869 \to 0.5069$). This diagnostic pinpointing confirms that geometric spatial disentanglement is the primary casualty during model failure, triggering cascading orbital divergence.
+During failure transitions, **coordinate decodability collapses by 35.6%** ($0.7869 \to 0.5069$) and angular momentum fidelity drops by **11.9%**. This degradation is accompanied by physical state shift: in the failure group, mean $r_{\min}$ drops to $2.582$ with $8.4\%$ of particles penetrating inside the ISCO ($r \le 3.0 r_s$), compared to mean $r_{\min} = 2.848$ with $0\%$ near the ISCO in success transitions. This demonstrates that severe prediction errors are associated with both geometric representation degradation and strong-field gravitational shear.
 
-#### 4. Reproducing Width Scaling & Failure Probing on Apple Silicon (M1 Air)
+#### 4. Ensemble Predictive Spread
+Stochastic diffusion sampling ($S=8$ reverse diffusion paths) generates ensemble predictive spread $\sigma_{\mathrm{ensemble}}$. On held-out transitions, ensemble spread exhibits weak correlation with actual transition error ($r = 0.0402, \rho = 0.0317$), with a failure-to-success spread ratio of only $1.014\times$. While ensemble variance captures local sampling noise, it does not reliably anticipate sudden chaotic plunge events near the ISCO, highlighting the complementary utility of internal representation probes.
+
+#### 5. Reproducing Width Scaling & Failure Probing on Apple Silicon (M1 Air)
 Execute both experiments in ~25 seconds on a base M1 Air:
 
 ```bash

@@ -367,8 +367,42 @@ def run_failure_mode_probing_experiment(
         "trajectory_rmse": transition_rmse,
     }
 
+    # State-controlled Baselines for Error Predictability
+    def extract_phys_baseline_feats(states, rs=0.5555):
+        n_bodies = 16
+        r_isco = 3.0 * rs
+        feats = []
+        for s in states:
+            pos = s[:n_bodies*3].reshape(n_bodies, 3)
+            vel = s[n_bodies*3:n_bodies*6].reshape(n_bodies, 3)
+            bh_pos = s[n_bodies*6:n_bodies*6+3]
+            bh_vel = s[n_bodies*6+3:n_bodies*6+6]
+            r_dists = np.linalg.norm(pos - bh_pos[None, :], axis=1)
+            r_min = np.min(r_dists)
+            r_mean = np.mean(r_dists)
+            v_mags = np.linalg.norm(vel - bh_vel[None, :], axis=1)
+            v_mean = np.mean(v_mags)
+            v_max = np.max(v_mags)
+            dist_isco = np.min(np.abs(r_dists - r_isco))
+            r_min_over_rs = r_min / rs
+            L_vec = np.sum(np.cross(pos, vel), axis=0)
+            L_norm = np.linalg.norm(L_vec)
+            feats.append([r_min, r_mean, v_mean, v_max, dist_isco, r_min_over_rs, L_norm])
+        return np.array(feats, dtype=np.float32)
+
+    phys_tr = extract_phys_baseline_feats(train_x)
+    phys_te = extract_phys_baseline_feats(test_x)
+
+    res_phys = probe_suite.evaluate_error_predictability(phys_tr, phys_te, error_targets_train, error_targets_test)
+    res_raw = probe_suite.evaluate_error_predictability(train_x, test_x, error_targets_train, error_targets_test)
+    print(f"  • {'Physical Feats':<15} -> Baseline Error Predictability: R^2 = {res_phys['trajectory_rmse']['r2']:6.4f}, Pearson r = {res_phys['trajectory_rmse']['corr']:6.4f}")
+    print(f"  • {'Raw State (x_t)':<15} -> Baseline Error Predictability: R^2 = {res_raw['trajectory_rmse']['r2']:6.4f}, Pearson r = {res_raw['trajectory_rmse']['corr']:6.4f}")
+
     layer_names = list(train_acts.keys())
-    error_probe_results = {}
+    error_probe_results = {
+        "physical_baseline": res_phys["trajectory_rmse"],
+        "raw_state_baseline": res_raw["trajectory_rmse"],
+    }
     for layer in layer_names:
         h_tr = train_acts[layer]
         h_te = test_acts[layer]
@@ -377,6 +411,23 @@ def run_failure_mode_probing_experiment(
         )
         error_probe_results[layer] = res["trajectory_rmse"]
         print(f"  • {layer:<15} -> Predicts Test Error Magnitude: R^2 = {res['trajectory_rmse']['r2']:6.4f}, Pearson r = {res['trajectory_rmse']['corr']:6.4f}")
+
+    # Residualized error test: e_res = e_actual - e_hat(x_t)
+    from sklearn.linear_model import Ridge
+    from scipy.stats import pearsonr, spearmanr
+    e_base_tr = Ridge(alpha=1.0).fit(train_x, train_rmse).predict(train_x)
+    e_base_te = Ridge(alpha=1.0).fit(train_x, train_rmse).predict(test_x)
+    e_res_tr = train_rmse - e_base_tr
+    e_res_te = transition_rmse - e_base_te
+    clf_res = Ridge(alpha=1.0).fit(train_acts["layer_pre_head"], e_res_tr)
+    pred_res_te = clf_res.predict(test_acts["layer_pre_head"])
+    r_res, _ = pearsonr(pred_res_te, e_res_te)
+    rho_res, _ = spearmanr(pred_res_te, e_res_te)
+    error_probe_results["residualized_pre_head"] = {
+        "pearson_r": float(r_res),
+        "spearman_rho": float(rho_res),
+    }
+    print(f"  • {'Residualized (h_pre_head -> e_res)':<35} -> Pearson r = {r_res:6.4f}, Spearman rho = {rho_res:6.4f}")
 
     # 4. REGIME DISSECTION: SUCCESS VS FAILURE REGIMES
     print("\n[Part 4] Representation Dissection: Probing Success (Lowest 25% error) vs Failure (Highest 25% error)...")
