@@ -1,4 +1,4 @@
-# 🌌 Barnes-Hut Octree Black Hole N-Body Simulation
+# 🌌 Learning Relativistic Astrophysical Dynamics with Diffusion Models: Representation Scaling and Failure Diagnosis
 
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=c%2B%2B)](https://en.cppreference.com/w/cpp/17)
 [![Python 3](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python)](https://python.org)
