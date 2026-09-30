@@ -59,6 +59,6 @@ The forward pass records internal representations $h_l$ at every layer for probi
 2. `layer_1`, `layer_2`, `layer_3`: Activations exiting each respective `ResBlock`:
    $$h_l = \text{ResBlock}_l(h_{l-1}, t_{\text{emb}}) \in \mathbb{R}^{B \times d}$$
 3. `layer_pre_head`: Pre-projection representation exiting the final LayerNorm:
-   $$h_{\text{pre\_head}} = \text{LayerNorm}(h_{\text{last}}) \in \mathbb{R}^{B \times d}$$
+   $$h_{\mathrm{out}} = \text{LayerNorm}(h_{\mathrm{last}}) \in \mathbb{R}^{B \times d}$$
 4. Final noise prediction:
-   $$\hat{\epsilon} = W_{\text{out}} h_{\text{pre\_head}} \in \mathbb{R}^{B \times D}$$
+   $$\hat{\epsilon} = W_{\mathrm{out}} h_{\mathrm{out}} \in \mathbb{R}^{B \times D}$$
