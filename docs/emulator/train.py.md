@@ -41,7 +41,7 @@ Executes mini-batch training with cosine learning rate scheduling and gradient c
 
 ### Function: `extract_dataset_activations(...)`
 Iterates across the entire training or test dataset in batches, passes states through the denoiser, and aggregates intermediate layer representations:
-$$h_l \in \left\{ h_{\text{input}}, h_1, h_2, \ldots, h_{\text{pre\_head}} \right\}$$
+$$h_l \in \left\{ h_{\mathrm{input}}, h_1, h_2, \dots, h_{\mathrm{out}} \right\}$$
 into NumPy arrays for probing experiments.
 
 #### Parameters

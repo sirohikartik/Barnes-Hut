@@ -52,7 +52,7 @@ void init_accretion_disk(int n, double r_min, double r_max, double total_disk_ma
 ```
 Generates a realistic Keplerian / relativistic disk:
 - Radial distribution: surface density $\Sigma(r) \propto 1/r$.
-- Vertical scale height: $z \sim \mathcal{N}(0, h)$ where $h = r \times \text{thickness\_ratio}$.
+- Vertical scale height: $z \sim \mathcal{N}(0, h)$ where $h = r \times \mathtt{thickness\_ratio}$.
 - Relativistic circular velocity:
   $$v_{\text{circ}}(r) = \sqrt{\frac{G M_{\text{BH}} r}{(r - r_s)^2}}$$
 - Tangential velocity vector: $\vec{v} = (-v_{\text{circ}} \sin \phi, v_{\text{circ}} \cos \phi, 0) + \vec{v}_{\text{turb}}$.

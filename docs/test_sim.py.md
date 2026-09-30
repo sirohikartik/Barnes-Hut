@@ -19,7 +19,7 @@ Main test runner containing verification assertions:
 #### Internal Variables
 - `sim`: `black_hole_core.Simulation(G=1.0, c=60.0, theta=0.6, softening=0.08)`.
 - `expected_rs`: Analytical Schwarzschild radius:
-  $$\text{expected\_rs} = \frac{2 \times 1.0 \times 1000.0}{60.0^2} \approx 0.555556$$
+  $$r_s = \frac{2 \times 1.0 \times 1000.0}{60.0^2} \approx 0.555556$$
 - `pos`, `vel`: Initial position and velocity NumPy arrays from `sim.get_positions()` and `sim.get_velocities()`.
 - `active`: Boolean mask from `sim.get_active()`.
 - `dt`: Simulation timestep (`0.02`).

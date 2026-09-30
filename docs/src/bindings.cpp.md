@@ -39,7 +39,7 @@ sim = black_hole_core.Simulation(G=1.0, c=60.0, theta=0.6, softening=0.08)
 | `get_active()` | Lambda $\to$ NumPy array | Returns $(N,)$ boolean array indicating whether each particle is alive. |
 | `get_black_hole_pos()` | Lambda $\to$ NumPy array | Returns 3-element float64 array for black hole coordinates. |
 | `get_black_hole_vel()` | Lambda $\to$ NumPy array | Returns 3-element float64 array for black hole velocity. |
-| `get_octree_boxes(max_boxes=500)` | Lambda $\to$ NumPy array | Returns $(K, 5)$ float64 array of octree cells: $[c_x, c_y, c_z, \text{half\_width}, \text{depth}]$. |
+| `get_octree_boxes(max_boxes=500)` | Lambda $\to$ NumPy array | Returns $(K, 5)$ float64 array of octree cells: `[cx, cy, cz, half_width, depth]`. |
 
 ### Read-Only Properties
 | Property | Type | Description |

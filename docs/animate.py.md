@@ -15,7 +15,7 @@
 ## 2. Core Functions & CLI Arguments
 
 ### Function: `create_octree_cube_lines(boxes)`
-Transforms raw bounding box coordinates $[c_x, c_y, c_z, \text{half\_width}, \text{depth}]$ into sets of 12 line segments per cube for rendering via `Line3DCollection`.
+Transforms raw bounding box coordinates `[cx, cy, cz, half_width, depth]` into sets of 12 line segments per cube for rendering via `Line3DCollection`.
 - `boxes`: $(K, 5)$ NumPy array from `sim.get_octree_boxes()`.
 - Filters deeper subdivisions (`depth > 5`) to prevent visual clutter and maintain high rendering frame rates.
 

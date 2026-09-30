@@ -18,7 +18,7 @@ Represents an individual cubical cell in the octree.
 | Variable | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `center` | `Vec3` | `{0,0,0}` | Geometric centroid $(c_x, c_y, c_z)$ of the cubical cell. |
-| `half_width` | `double` | `0.0` | Half-length of the cube's side length $s = 2 \times \text{half\_width}$. |
+| `half_width` | `double` | `0.0` | Half-length of the cube's side length $s = 2 \times w_{\mathrm{half}}$. |
 | `mass` | `double` | `0.0` | Total aggregate mass enclosed by this subtree: $M = \sum m_i$. |
 | `com` | `Vec3` | `{0,0,0}` | Center of mass of the enclosed bodies: $\vec{R}_{\text{com}} = \frac{1}{M}\sum m_i \vec{r}_i$. |
 | `body_idx` | `int` | `-1` | Index of the particle if this node is an occupied leaf; `-1` otherwise. |
@@ -63,7 +63,7 @@ Constructs the tree from active particles:
 1. Calculates the minimum and maximum bounding extent of all active bodies:
    $$\vec{r}_{\min}, \vec{r}_{\max}$$
 2. Sets root cube center and size:
-   $$\text{center} = \frac{\vec{r}_{\min} + \vec{r}_{\max}}{2}, \quad \text{half\_width} = \frac{\max(\Delta x, \Delta y, \Delta z)}{2} \times 1.05 + 1.0$$
+   $$\vec{c} = \frac{\vec{r}_{\min} + \vec{r}_{\max}}{2}, \quad w_{\mathrm{half}} = \frac{\max(\Delta x, \Delta y, \Delta z)}{2} \times 1.05 + 1.0$$
 3. Inserts each active particle into root node `0`.
 
 ### `void insert(int node_idx, int body_id, const std::vector<Body>& bodies)`
@@ -85,7 +85,7 @@ Traverses the tree to evaluate the gravitational acceleration $\vec{a}_i$ on bod
 1. Uses non-recursive stack `int stack[256]`.
 2. For each node, evaluates the **Barnes-Hut Multipole Acceptance Criterion**:
    $$\frac{s}{d} < \theta \iff s < \theta \cdot d$$
-   where $s = 2 \times \text{half\_width}$ is the node side length and $d = \|\vec{R}_{\text{com}} - \vec{r}_i\|$ is the distance to the center of mass.
+   where $s = 2 \times w_{\mathrm{half}}$ is the node side length and $d = \|\vec{R}_{\mathrm{com}} - \vec{r}_i\|$ is the distance to the center of mass.
 3. **If MAC is satisfied**: treats the entire subtree as a single point mass at $\vec{R}_{\text{com}}$:
    $$\vec{a} += \frac{G M (\vec{R}_{\text{com}} - \vec{r}_i)}{\left(\|\vec{R}_{\text{com}} - \vec{r}_i\|^2 + \epsilon^2\right)^{3/2}}$$
 4. **If MAC fails**: pushes all 8 children onto the stack to resolve higher spatial detail.
