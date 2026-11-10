@@ -148,43 +148,42 @@ def train_diffusion_emulator(
 def extract_dataset_activations(
     diffusion: GaussianDiffusion,
     states_x: np.ndarray,
-    targets: np.ndarray,
-    state_mean: np.ndarray,
-    state_std: np.ndarray,
-    target_mean: np.ndarray,
-    target_std: np.ndarray,
+    targets: Optional[np.ndarray] = None,
+    state_mean: np.ndarray = None,
+    state_std: np.ndarray = None,
+    target_mean: Optional[np.ndarray] = None,
+    target_std: Optional[np.ndarray] = None,
     diffusion_step: int = 0,
-    batch_size: int = 128,
+    batch_size: int = 64,
+    use_inference_sampling: bool = True,
 ) -> Dict[str, np.ndarray]:
     """
-    Passes states through the denoiser and collects activations h_l from all layers.
-    Args:
-        diffusion_step: which reverse diffusion step k to extract activations from (e.g. k=0 is clean).
+    Passes conditioning states x_t through the denoiser and collects activations h_l.
+    If use_inference_sampling=True (default), activations are collected during actual
+    reverse ancestral diffusion sampling conditioned ONLY on x_t, with ZERO ground-truth leakage.
     """
     device = diffusion.device
     diffusion.model.eval()
 
     norm_x = (states_x - state_mean) / state_std
-    norm_tgt = (targets - target_mean) / target_std
-
     tensor_x = torch.from_numpy(norm_x).float()
-    tensor_tgt = torch.from_numpy(norm_tgt).float()
-
-    dataset = TensorDataset(tensor_x, tensor_tgt)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     collected = {}
+    n_samples = len(tensor_x)
 
-    for bx, by in loader:
-        bx = bx.to(device)
-        by = by.to(device)
+    for i in range(0, n_samples, batch_size):
+        bx = tensor_x[i : i + batch_size].to(device)
         b_size = bx.shape[0]
 
-        t_tensor = torch.full((b_size,), diffusion_step, device=device, dtype=torch.long)
-        # At diffusion step k, the noisy input is q_sample(by, k)
-        noisy_target, _ = diffusion.q_sample(by, t_tensor)
-
-        _, acts = diffusion.model(noisy_target, t_tensor, bx, return_activations=True)
+        if use_inference_sampling:
+            # Run genuine ancestral reverse sampling conditioned on bx without target leakage
+            _, acts = diffusion.sample_next_state(bx, record_activations_at_step=diffusion_step)
+        else:
+            norm_tgt = (targets[i : i + batch_size] - target_mean) / target_std
+            by = torch.from_numpy(norm_tgt).float().to(device)
+            t_tensor = torch.full((b_size,), diffusion_step, device=device, dtype=torch.long)
+            noisy_target, _ = diffusion.q_sample(by, t_tensor)
+            _, acts = diffusion.model(noisy_target, t_tensor, bx, return_activations=True)
 
         for layer_name, act_tensor in acts.items():
             act_np = act_tensor.detach().cpu().numpy()
@@ -192,5 +191,4 @@ def extract_dataset_activations(
                 collected[layer_name] = []
             collected[layer_name].append(act_np)
 
-    # Concatenate across batches
     return {k: np.concatenate(v, axis=0) for k, v in collected.items()}

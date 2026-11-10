@@ -144,7 +144,7 @@ def generate_single_trajectory(
 
 
 def create_physics_dataset(
-    num_trajectories: int = 35,
+    num_trajectories: int = 60,
     num_steps: int = 60,
     num_bodies: int = 16,
     dt: float = 0.01,
@@ -166,52 +166,48 @@ def create_physics_dataset(
             num_steps=num_steps,
             dt=dt,
             seed=seed,
-            disk_radius_min=1.8, # safely outside ISCO
+            disk_radius_min=2.5, # safely 4.5 * rs, well outside ISCO (3 * rs) to avoid singular horizon plunges
             disk_radius_max=18.0 + (i % 4) * 0.5,
             total_disk_mass=1.6, # fixed total mass so each particle has mass m=0.1
         )
         all_trajectories.append(states)
         all_physics.append(phys)
 
-    # Dedicate the last 2 trajectories purely for continuous rollouts
-    rollout_trajectories = all_trajectories[-2:]
-    rollout_physics = all_physics[-2:]
-    
-    pool_trajectories = all_trajectories[:-2]
-    pool_physics = all_physics[:-2]
+    # Strict trajectory-level partitioning (no transition leakage):
+    num_rollout = 5
+    num_test_traj = 5
+    num_train_traj = num_trajectories - num_rollout - num_test_traj
 
-    all_x, all_y, all_delta, all_phys_step = [], [], [], []
+    train_trajectories = all_trajectories[:num_train_traj]
+    train_physics_traj = all_physics[:num_train_traj]
 
-    for states, phys in zip(pool_trajectories, pool_physics):
-        T = len(states)
-        for t in range(T - 1):
-            curr_state = states[t]
-            next_state = states[t + 1]
-            p_data = phys[t]
-            delta = next_state - curr_state
+    test_trajectories = all_trajectories[num_train_traj : num_train_traj + num_test_traj]
+    test_physics_traj = all_physics[num_train_traj : num_train_traj + num_test_traj]
 
-            all_x.append(curr_state)
-            all_y.append(next_state)
-            all_delta.append(delta)
-            all_phys_step.append(p_data)
+    rollout_trajectories = all_trajectories[-num_rollout:]
+    rollout_physics = all_physics[-num_rollout:]
 
-    all_x = np.array(all_x, dtype=np.float32)
-    all_y = np.array(all_y, dtype=np.float32)
-    all_delta = np.array(all_delta, dtype=np.float32)
+    def extract_pairs(trajs, phys_list):
+        xs, ys, deltas, phys_steps = [], [], [], []
+        for states, phys in zip(trajs, phys_list):
+            T = len(states)
+            for t in range(T - 1):
+                curr_state = states[t]
+                next_state = states[t + 1]
+                delta = next_state - curr_state
+                xs.append(curr_state)
+                ys.append(next_state)
+                deltas.append(delta)
+                phys_steps.append(phys[t])
+        return (
+            np.array(xs, dtype=np.float32),
+            np.array(ys, dtype=np.float32),
+            np.array(deltas, dtype=np.float32),
+            phys_steps,
+        )
 
-    total_samples = len(all_x)
-    rng = np.random.RandomState(42)
-    shuffled_indices = rng.permutation(total_samples)
-
-    split_pt = int(total_samples * train_split)
-    train_idx = shuffled_indices[:split_pt]
-    test_idx = shuffled_indices[split_pt:]
-
-    train_x, test_x = all_x[train_idx], all_x[test_idx]
-    train_y, test_y = all_y[train_idx], all_y[test_idx]
-    train_delta, test_delta = all_delta[train_idx], all_delta[test_idx]
-    train_phys = [all_phys_step[i] for i in train_idx]
-    test_phys = [all_phys_step[i] for i in test_idx]
+    train_x, train_y, train_delta, train_phys = extract_pairs(train_trajectories, train_physics_traj)
+    test_x, test_y, test_delta, test_phys = extract_pairs(test_trajectories, test_physics_traj)
 
     # Compute normalization statistics strictly on training data
     state_mean = np.mean(train_x, axis=0)
@@ -222,10 +218,21 @@ def create_physics_dataset(
     delta_std = np.std(train_delta, axis=0)
     delta_std[delta_std < 1e-4] = 1.0
 
-    print(f"Dataset summary:")
-    print(f"  Total pool samples: {total_samples} (Train: {len(train_x)}, Test: {len(test_x)})")
-    print(f"  Dedicated held-out rollout trajectories: {len(rollout_trajectories)}")
+    # Physical group scaling factors (coordinate-type invariant)
+    pos_idx = list(range(num_bodies * 3)) + [num_bodies * 6, num_bodies * 6 + 1, num_bodies * 6 + 2]
+    vel_idx = list(range(num_bodies * 3, num_bodies * 6)) + [num_bodies * 6 + 3, num_bodies * 6 + 4, num_bodies * 6 + 5]
+
+    pos_scale = float(np.std(train_x[:, pos_idx]))
+    vel_scale = float(np.std(train_x[:, vel_idx]))
+    d_pos_scale = float(np.std(train_delta[:, pos_idx]))
+    d_vel_scale = float(np.std(train_delta[:, vel_idx]))
+
+    print(f"Dataset summary (Trajectory-level split):")
+    print(f"  Train: {num_train_traj} trajectories ({len(train_x)} transitions)")
+    print(f"  Test : {num_test_traj} trajectories ({len(test_x)} transitions)")
+    print(f"  Rollout : {len(rollout_trajectories)} dedicated held-out trajectories")
     print(f"  State dimension: {train_x.shape[1]}")
+    print(f"  Physical group scales: pos={pos_scale:.3f}, vel={vel_scale:.3f}, d_pos={d_pos_scale:.4f}, d_vel={d_vel_scale:.4f}")
 
     return {
         "train_x": train_x,
@@ -240,6 +247,12 @@ def create_physics_dataset(
         "state_std": state_std,
         "delta_mean": delta_mean,
         "delta_std": delta_std,
+        "pos_scale": pos_scale,
+        "vel_scale": vel_scale,
+        "d_pos_scale": d_pos_scale,
+        "d_vel_scale": d_vel_scale,
+        "pos_idx": pos_idx,
+        "vel_idx": vel_idx,
         "rollout_trajectories": rollout_trajectories,
         "rollout_physics": rollout_physics,
         "raw_trajectories": all_trajectories,

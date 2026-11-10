@@ -1,8 +1,22 @@
 import torch
 import torch.nn as nn
 import numpy as np
+import math
 from typing import Dict, List, Optional, Tuple
 from emulator.model import SmallPhysicsDenoiser
+
+
+def cosine_beta_schedule(timesteps: int, s: float = 0.008, max_beta: float = 0.1, device: torch.device = torch.device("cpu")) -> torch.Tensor:
+    """
+    Cosine beta schedule from Nichol & Dhariwal (2021).
+    Clamped with max_beta=0.1 to prevent unclipped 1/sqrt(alpha_bar_T) numerical explosion.
+    """
+    steps = timesteps + 1
+    x = torch.linspace(0, timesteps, steps, device=device)
+    alphas_cumprod = torch.cos(((x / timesteps) + s) / (1 + s) * math.pi * 0.5) ** 2
+    alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
+    betas = 1.0 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
+    return torch.clamp(betas, min=1e-4, max=max_beta)
 
 
 class GaussianDiffusion(nn.Module):
@@ -14,6 +28,7 @@ class GaussianDiffusion(nn.Module):
         self,
         model: SmallPhysicsDenoiser,
         num_timesteps: int = 25,
+        schedule: str = "cosine",
         beta_start: float = 1e-4,
         beta_end: float = 0.028,
         device: torch.device = torch.device("cpu"),
@@ -22,9 +37,13 @@ class GaussianDiffusion(nn.Module):
         self.model = model.to(device)
         self.num_timesteps = num_timesteps
         self.device = device
+        self.schedule = schedule
 
-        # Linear beta schedule
-        betas = torch.linspace(beta_start, beta_end, num_timesteps, dtype=torch.float32, device=device)
+        if schedule == "cosine":
+            betas = cosine_beta_schedule(num_timesteps, device=device)
+        else:
+            betas = torch.linspace(beta_start, beta_end, num_timesteps, dtype=torch.float32, device=device)
+
         alphas = 1.0 - betas
         alphas_cumprod = torch.cumprod(alphas, dim=0)
         alphas_cumprod_prev = torch.cat([torch.tensor([1.0], device=device), alphas_cumprod[:-1]])
@@ -88,10 +107,11 @@ class GaussianDiffusion(nn.Module):
 
         pred_noise, activations = self.model(x_k, k_tensor, cond, return_activations=return_activations)
 
-        # Estimate x_0 from pred_noise
+        # Estimate x_0 from pred_noise with bounded numerical clamping
         sqrt_recip_alpha_bar = 1.0 / self.sqrt_alphas_cumprod[k]
         sqrt_recip_m1_alpha_bar = self.sqrt_one_minus_alphas_cumprod[k] / self.sqrt_alphas_cumprod[k]
         x_0_pred = sqrt_recip_alpha_bar * x_k - sqrt_recip_m1_alpha_bar * pred_noise
+        x_0_pred = torch.clamp(x_0_pred, -3.5, 3.5)
 
         # Posterior mean
         mean = self.posterior_mean_coef1[k] * x_0_pred + self.posterior_mean_coef2[k] * x_k
