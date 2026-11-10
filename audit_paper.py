@@ -3,7 +3,11 @@ import re
 with open("main.tex") as f:
     text = f.read()
 
-lines = [l.split("%")[0] for l in text.splitlines()]
+# Replace escaped percent sign \% with ' percent ' before splitting comments
+lines = []
+for l in text.splitlines():
+    l_safe = l.replace(r"\%", " percent ")
+    lines.append(l_safe.split("%")[0])
 clean_text = "\n".join(lines)
 
 # 1. Em-dashes
@@ -35,10 +39,12 @@ prep_violations = []
 long_sentences = []
 
 for s in sentences:
-    # ignore environments, tables, equations, itemize
-    if s.strip().startswith("\\") or s.strip().startswith("&") or s.strip().startswith("}"):
+    # ignore environments, tables, equations, itemize, captions
+    if s.strip().startswith("\\") or s.strip().startswith("&") or s.strip().startswith("}") or s.strip().startswith("]") or s.strip().startswith("\\caption") or s.strip().startswith("\\item"):
         continue
-    s_clean = re.sub(r"\\[a-zA-Z]+(\[[^\]]*\])?(\{[^\}]*\})*", "", s)
+    # Strip environments
+    s_clean = re.sub(r"\\begin\{[^\}]+\}.*?\\end\{[^\}]+\}", "", s, flags=re.DOTALL)
+    s_clean = re.sub(r"\\[a-zA-Z]+(\[[^\]]*\])?(\{[^\}]*\})*", "", s_clean)
     s_clean = re.sub(r"\$[^$]*\$", "X", s_clean)
     s_clean = re.sub(r"[\n\t\r]+", " ", s_clean).strip()
     words = s_clean.split()

@@ -1,0 +1,538 @@
+{
+  "fixed_baselines": {
+    "identity": {
+      "mean_rmse": 2.939,
+      "std_rmse": 0.708,
+      "ci_95": [
+        2.563,
+        3.286
+      ],
+      "final_rmse": 5.398
+    },
+    "kinematic": {
+      "mean_rmse": 2.864,
+      "std_rmse": 0.731,
+      "ci_95": [
+        2.476,
+        3.221
+      ],
+      "final_rmse": 5.276
+    }
+  },
+  "scaling_suite": {
+    "N_25": {
+      "num_trajectories": 25,
+      "num_transitions": 1475,
+      "models": {
+        "d_64": {
+          "val_loss": 0.8616,
+          "mlp": {
+            "mean_rmse": 3.735,
+            "ci_95": [
+              3.48,
+              3.99
+            ],
+            "displacement_norm_ratio": 1.249
+          },
+          "ancestral": {
+            "mean_rmse": 13.386,
+            "ci_95": [
+              12.76,
+              13.99
+            ],
+            "displacement_norm_ratio": 8.208
+          },
+          "ddim": {
+            "mean_rmse": 10.229,
+            "ci_95": [
+              9.82,
+              10.63
+            ],
+            "displacement_norm_ratio": 7.148
+          },
+          "mean5": {
+            "mean_rmse": 13.054,
+            "ci_95": [
+              12.52,
+              13.53
+            ],
+            "displacement_norm_ratio": 5.902
+          }
+        },
+        "d_128": {
+          "val_loss": 0.7505,
+          "mlp": {
+            "mean_rmse": 3.524,
+            "ci_95": [
+              3.22,
+              3.81
+            ],
+            "displacement_norm_ratio": 1.093
+          },
+          "ancestral": {
+            "mean_rmse": 14.887,
+            "ci_95": [
+              14.61,
+              15.19
+            ],
+            "displacement_norm_ratio": 8.094
+          },
+          "ddim": {
+            "mean_rmse": 10.894,
+            "ci_95": [
+              10.46,
+              11.27
+            ],
+            "displacement_norm_ratio": 7.057
+          },
+          "mean5": {
+            "mean_rmse": 14.267,
+            "ci_95": [
+              13.62,
+              14.92
+            ],
+            "displacement_norm_ratio": 6.224
+          }
+        }
+      }
+    },
+    "N_50": {
+      "num_trajectories": 50,
+      "num_transitions": 2950,
+      "models": {
+        "d_64": {
+          "val_loss": 0.7306,
+          "mlp": {
+            "mean_rmse": 3.598,
+            "ci_95": [
+              3.45,
+              3.73
+            ],
+            "displacement_norm_ratio": 1.27
+          },
+          "ancestral": {
+            "mean_rmse": 13.802,
+            "ci_95": [
+              12.89,
+              14.63
+            ],
+            "displacement_norm_ratio": 7.966
+          },
+          "ddim": {
+            "mean_rmse": 10.407,
+            "ci_95": [
+              10.04,
+              10.83
+            ],
+            "displacement_norm_ratio": 6.897
+          },
+          "mean5": {
+            "mean_rmse": 12.594,
+            "ci_95": [
+              12.0,
+              13.16
+            ],
+            "displacement_norm_ratio": 5.544
+          }
+        },
+        "d_128": {
+          "val_loss": 0.6004,
+          "mlp": {
+            "mean_rmse": 3.092,
+            "ci_95": [
+              2.81,
+              3.35
+            ],
+            "displacement_norm_ratio": 1.145
+          },
+          "ancestral": {
+            "mean_rmse": 11.061,
+            "ci_95": [
+              10.47,
+              11.68
+            ],
+            "displacement_norm_ratio": 6.951
+          },
+          "ddim": {
+            "mean_rmse": 8.814,
+            "ci_95": [
+              8.25,
+              9.33
+            ],
+            "displacement_norm_ratio": 6.249
+          },
+          "mean5": {
+            "mean_rmse": 9.717,
+            "ci_95": [
+              9.12,
+              10.3
+            ],
+            "displacement_norm_ratio": 4.469
+          }
+        }
+      }
+    },
+    "N_100": {
+      "num_trajectories": 100,
+      "num_transitions": 5900,
+      "models": {
+        "d_64": {
+          "val_loss": 0.6225,
+          "mlp": {
+            "mean_rmse": 3.084,
+            "ci_95": [
+              2.89,
+              3.26
+            ],
+            "displacement_norm_ratio": 1.169
+          },
+          "ancestral": {
+            "mean_rmse": 12.626,
+            "ci_95": [
+              11.94,
+              13.38
+            ],
+            "displacement_norm_ratio": 7.464
+          },
+          "ddim": {
+            "mean_rmse": 8.927,
+            "ci_95": [
+              8.38,
+              9.44
+            ],
+            "displacement_norm_ratio": 6.343
+          },
+          "mean5": {
+            "mean_rmse": 11.518,
+            "ci_95": [
+              10.71,
+              12.26
+            ],
+            "displacement_norm_ratio": 5.294
+          }
+        },
+        "d_128": {
+          "val_loss": 0.3815,
+          "mlp": {
+            "mean_rmse": 2.956,
+            "ci_95": [
+              2.72,
+              3.17
+            ],
+            "displacement_norm_ratio": 1.109
+          },
+          "ancestral": {
+            "mean_rmse": 7.404,
+            "ci_95": [
+              6.9,
+              7.9
+            ],
+            "displacement_norm_ratio": 5.599
+          },
+          "ddim": {
+            "mean_rmse": 6.253,
+            "ci_95": [
+              5.76,
+              6.79
+            ],
+            "displacement_norm_ratio": 5.133
+          },
+          "mean5": {
+            "mean_rmse": 6.455,
+            "ci_95": [
+              5.91,
+              6.98
+            ],
+            "displacement_norm_ratio": 3.369
+          }
+        }
+      }
+    },
+    "N_250": {
+      "num_trajectories": 250,
+      "num_transitions": 14750,
+      "models": {
+        "d_64": {
+          "val_loss": 0.5572,
+          "mlp": {
+            "mean_rmse": 1.803,
+            "ci_95": [
+              1.58,
+              2.03
+            ],
+            "displacement_norm_ratio": 1.02
+          },
+          "ancestral": {
+            "mean_rmse": 7.961,
+            "ci_95": [
+              6.95,
+              8.97
+            ],
+            "displacement_norm_ratio": 5.567
+          },
+          "ddim": {
+            "mean_rmse": 6.691,
+            "ci_95": [
+              6.03,
+              7.24
+            ],
+            "displacement_norm_ratio": 5.03
+          },
+          "mean5": {
+            "mean_rmse": 7.599,
+            "ci_95": [
+              6.61,
+              8.53
+            ],
+            "displacement_norm_ratio": 3.878
+          }
+        },
+        "d_128": {
+          "val_loss": 0.2459,
+          "mlp": {
+            "mean_rmse": 2.256,
+            "ci_95": [
+              2.04,
+              2.47
+            ],
+            "displacement_norm_ratio": 1.147
+          },
+          "ancestral": {
+            "mean_rmse": 5.156,
+            "ci_95": [
+              4.63,
+              5.69
+            ],
+            "displacement_norm_ratio": 3.937
+          },
+          "ddim": {
+            "mean_rmse": 4.832,
+            "ci_95": [
+              4.38,
+              5.3
+            ],
+            "displacement_norm_ratio": 3.839
+          },
+          "mean5": {
+            "mean_rmse": 4.591,
+            "ci_95": [
+              4.17,
+              5.05
+            ],
+            "displacement_norm_ratio": 2.706
+          }
+        }
+      }
+    }
+  },
+  "error_probing": {
+    "Deterministic DDIM Error": {
+      "physical_features": {
+        "r2": 0.1929,
+        "r": 0.46,
+        "rho": 0.463,
+        "log_r2": 0.1968,
+        "log_r": 0.46
+      },
+      "raw_coordinates": {
+        "r2": -0.5268,
+        "r": -0.011,
+        "rho": -0.014
+      },
+      "layer_input": {
+        "r2": -0.0317,
+        "r": 0.17,
+        "rho": 0.177
+      },
+      "layer_1": {
+        "r2": -0.0079,
+        "r": 0.152,
+        "rho": 0.182
+      },
+      "layer_2": {
+        "r2": -0.0258,
+        "r": 0.111,
+        "rho": 0.147
+      },
+      "layer_3": {
+        "r2": -0.0326,
+        "r": 0.112,
+        "rho": 0.122
+      },
+      "layer_pre_head": {
+        "r2": 0.0023,
+        "r": 0.096,
+        "rho": 0.121
+      },
+      "combined": {
+        "r2": 0.2108,
+        "r": 0.46,
+        "rho": 0.465
+      }
+    },
+    "Denoised Mean-of-10 Error": {
+      "physical_features": {
+        "r2": 0.6845,
+        "r": 0.878,
+        "rho": 0.878,
+        "log_r2": 0.6828,
+        "log_r": 0.878
+      },
+      "raw_coordinates": {
+        "r2": -42.8157,
+        "r": 0.148,
+        "rho": 0.034
+      },
+      "layer_input": {
+        "r2": -0.2799,
+        "r": 0.356,
+        "rho": 0.278
+      },
+      "layer_1": {
+        "r2": -0.1623,
+        "r": 0.282,
+        "rho": 0.25
+      },
+      "layer_2": {
+        "r2": -0.6039,
+        "r": 0.195,
+        "rho": 0.179
+      },
+      "layer_3": {
+        "r2": -4.4352,
+        "r": 0.163,
+        "rho": 0.254
+      },
+      "layer_pre_head": {
+        "r2": -0.4253,
+        "r": 0.245,
+        "rho": 0.239
+      },
+      "combined": {
+        "r2": 0.4799,
+        "r": 0.825,
+        "rho": 0.813
+      }
+    },
+    "Single Stochastic Error": {
+      "physical_features": {
+        "r2": 0.1513,
+        "r": 0.442,
+        "rho": 0.384,
+        "log_r2": 0.1333,
+        "log_r": 0.442
+      },
+      "raw_coordinates": {
+        "r2": -0.8055,
+        "r": 0.028,
+        "rho": 0.037
+      },
+      "layer_input": {
+        "r2": 0.0152,
+        "r": 0.291,
+        "rho": 0.218
+      },
+      "layer_1": {
+        "r2": -0.0733,
+        "r": 0.219,
+        "rho": 0.198
+      },
+      "layer_2": {
+        "r2": -0.0047,
+        "r": 0.158,
+        "rho": 0.155
+      },
+      "layer_3": {
+        "r2": -0.0306,
+        "r": 0.134,
+        "rho": 0.143
+      },
+      "layer_pre_head": {
+        "r2": -0.0642,
+        "r": 0.139,
+        "rho": 0.137
+      },
+      "combined": {
+        "r2": 0.1212,
+        "r": 0.409,
+        "rho": 0.373
+      }
+    }
+  },
+  "invariant_probing": {
+    "raw_coordinates": {
+      "pos_r2": -1.2341912984848022,
+      "vel_r2": -6.450257778167725,
+      "energy_r2": -3.3862414360046387,
+      "ang_mom_r2": -7.997762680053711,
+      "quad_energy_r2": -0.584537148475647,
+      "quad_ang_mom_r2": 0.15395575761795044
+    },
+    "widths": {
+      "d_32": {
+        "trained": {
+          "pos_r2": -0.2928171455860138,
+          "vel_r2": -0.26143839955329895,
+          "energy_r2": -0.048578619956970215,
+          "ang_mom_r2": -0.3572208881378174,
+          "quad_energy_r2": -0.08250904083251953,
+          "quad_ang_mom_r2": -0.4292532205581665
+        },
+        "random": {
+          "pos_r2": -0.3790285587310791,
+          "vel_r2": -0.26384398341178894,
+          "energy_r2": -0.15650081634521484,
+          "ang_mom_r2": -0.8664320707321167
+        }
+      },
+      "d_64": {
+        "trained": {
+          "pos_r2": -0.36017295718193054,
+          "vel_r2": -0.31631118059158325,
+          "energy_r2": -0.22470080852508545,
+          "ang_mom_r2": -0.6358681917190552,
+          "quad_energy_r2": -0.16059494018554688,
+          "quad_ang_mom_r2": -0.6933894157409668
+        },
+        "random": {
+          "pos_r2": -0.35465869307518005,
+          "vel_r2": -0.34027764201164246,
+          "energy_r2": -0.6756453514099121,
+          "ang_mom_r2": -1.158627986907959
+        }
+      },
+      "d_128": {
+        "trained": {
+          "pos_r2": -0.43901899456977844,
+          "vel_r2": -0.4198901355266571,
+          "energy_r2": -0.3447725772857666,
+          "ang_mom_r2": -1.2388808727264404,
+          "quad_energy_r2": -0.392073392868042,
+          "quad_ang_mom_r2": -1.4426345825195312
+        },
+        "random": {
+          "pos_r2": -0.39451053738594055,
+          "vel_r2": -0.34197530150413513,
+          "energy_r2": -0.4598425626754761,
+          "ang_mom_r2": -1.7692735195159912
+        }
+      },
+      "d_256": {
+        "trained": {
+          "pos_r2": -0.4926147758960724,
+          "vel_r2": -0.4818081855773926,
+          "energy_r2": -0.3106025457382202,
+          "ang_mom_r2": -2.0824263095855713,
+          "quad_energy_r2": -0.3412677049636841,
+          "quad_ang_mom_r2": -2.186269521713257
+        },
+        "random": {
+          "pos_r2": -0.5194373726844788,
+          "vel_r2": -0.4511454105377197,
+          "energy_r2": -0.7055679559707642,
+          "ang_mom_r2": -2.179630756378174
+        }
+      }
+    }
+  }
+}
