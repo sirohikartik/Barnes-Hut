@@ -123,6 +123,91 @@ class GaussianDiffusion(nn.Module):
             variance = torch.sqrt(self.posterior_variance[k])
             return mean + variance * noise, activations
 
+    def ddim_step(
+        self,
+        x_k: torch.Tensor,
+        k: int,
+        cond: torch.Tensor,
+        eta: float = 0.0,
+        return_activations: bool = False,
+    ) -> Tuple[torch.Tensor, Optional[Dict[str, torch.Tensor]]]:
+        """
+        Single step of generalized DDIM sampling (Song et al., 2020).
+        When eta = 0.0, the sampling process is completely deterministic.
+        """
+        k_tensor = torch.full((x_k.shape[0],), k, device=self.device, dtype=torch.long)
+        pred_noise, activations = self.model(x_k, k_tensor, cond, return_activations=return_activations)
+
+        alpha_bar_k = self.alphas_cumprod[k]
+        alpha_bar_prev = self.alphas_cumprod[k - 1] if k > 0 else torch.tensor(1.0, device=self.device)
+
+        # Estimate x_0 from pred_noise with clamping
+        sqrt_recip_alpha_bar = 1.0 / self.sqrt_alphas_cumprod[k]
+        sqrt_recip_m1_alpha_bar = self.sqrt_one_minus_alphas_cumprod[k] / self.sqrt_alphas_cumprod[k]
+        x_0_pred = sqrt_recip_alpha_bar * x_k - sqrt_recip_m1_alpha_bar * pred_noise
+        x_0_pred = torch.clamp(x_0_pred, -3.5, 3.5)
+
+        # Re-derive directional noise vector from clamped x_0_pred
+        eps_dir = (x_k - torch.sqrt(alpha_bar_k) * x_0_pred) / torch.sqrt(1.0 - alpha_bar_k)
+
+        # Compute sigma for stochasticity (0 when eta = 0)
+        sigma = eta * torch.sqrt((1.0 - alpha_bar_prev) / (1.0 - alpha_bar_k) * (1.0 - alpha_bar_k / alpha_bar_prev))
+
+        # Next sample x_{k-1}
+        dir_xt = torch.sqrt(torch.clamp(1.0 - alpha_bar_prev - sigma ** 2, min=0.0)) * eps_dir
+        mean = torch.sqrt(alpha_bar_prev) * x_0_pred + dir_xt
+
+        if eta > 0.0 and k > 0:
+            noise = torch.randn_like(x_k)
+            return mean + sigma * noise, activations
+        return mean, activations
+
+    @torch.no_grad()
+    def sample_next_state_ddim(
+        self,
+        cond: torch.Tensor,
+        eta: float = 0.0,
+    ) -> torch.Tensor:
+        """
+        Runs deterministic DDIM sampling (eta = 0.0) from N(0, I) to k=0.
+        """
+        batch_size = cond.shape[0]
+        state_dim = cond.shape[1]
+        x_k = torch.randn((batch_size, state_dim), device=self.device)
+
+        for k in reversed(range(self.num_timesteps)):
+            x_k, _ = self.ddim_step(x_k, k, cond, eta=eta, return_activations=False)
+
+        return x_k
+
+    @torch.no_grad()
+    def predict_future_state_ddim(
+        self,
+        x_raw: np.ndarray,
+        state_mean: np.ndarray,
+        state_std: np.ndarray,
+        delta_mean: np.ndarray,
+        delta_std: np.ndarray,
+        target_type: str = "delta",
+        eta: float = 0.0,
+    ) -> np.ndarray:
+        """
+        Predicts next state using deterministic DDIM sampling.
+        """
+        cond_norm = (x_raw - state_mean) / state_std
+        cond_tensor = torch.from_numpy(cond_norm).float().to(self.device)
+
+        sample_norm = self.sample_next_state_ddim(cond_tensor, eta=eta)
+        sample_np = sample_norm.detach().cpu().numpy()
+
+        if target_type == "delta":
+            delta_raw = sample_np * delta_std + delta_mean
+            next_state = x_raw + delta_raw
+        else:
+            next_state = sample_np * state_std + state_mean
+
+        return next_state
+
     @torch.no_grad()
     def sample_next_state(
         self,
