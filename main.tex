@@ -19,7 +19,7 @@
     urlcolor=blue!80!black
 }
 
-\title{\textbf{Evaluating Representation Scaling, Error Predictability, and Rollout Stability in Diffusion Surrogates for Pseudo-Relativistic $N$-Body Systems}}
+\title{\textbf{Evaluating Representation Scaling, Error Predictability, and Rollout Stability in Diffusion Surrogates for Pseudo-Newtonian $N$-Body Systems}}
 
 \author{
     \textbf{Kartik Sirohi} \\
@@ -34,31 +34,33 @@
 \maketitle
 
 \begin{abstract}
-Denoising diffusion models approximate complex dynamical systems, yet their autoregressive rollouts often deviate from physical manifolds. We present an empirical assessment of conditional diffusion surrogates trained on pseudo-relativistic Barnes-Hut $N$-body systems. Trajectories are partitioned strictly by trajectory across five independent seeds. We benchmark four denoiser widths ($d \in \{32, 64, 128, 256\}$) against matched deterministic multi-layer perceptrons, a constant-velocity kinematic baseline, and a zero-motion identity baseline. Models train under a cosine variance schedule \cite{nichol2021improved} with variance clipping ($\beta_{\max} = 0.1$). Single-step validation loss drops as width expands, moving from $0.923 \pm 0.012$ ($d=32$) to $0.660 \pm 0.036$ ($d=256$). Recursive multi-step rollouts accumulate error. Unconstrained diffusion models reach mean rollout root mean square errors between $11.36 \pm 0.30$ and $14.07 \pm 0.71$. Matched deterministic regressors yield lower errors between $3.14 \pm 0.11$ and $3.51 \pm 0.08$. Non-parametric kinematic and identity baselines outperform all learned models, producing errors of $2.21$ and $2.32$. Linear diagnostic probing without target displacement leakage reveals negative test $R^2$ scores for energy and angular momentum. Randomly initialized networks produce equivalent scores. Physical state features predict single-step transition error ($r=0.521, \rho=0.398$), whereas internal layer activations yield negative correlations ($r \approx -0.09, \rho \approx -0.11$). Runtime damping reduces diffusion rollout error, but constant damping matches probe-guided damping. This result confirms that error reduction reflects shrinkage toward static baselines rather than predictive error foresight.
+Denoising diffusion models approximate complex physical dynamical systems. Autoregressive rollouts with generative surrogates frequently deviate from physical manifolds. This paper presents an empirical assessment of conditional diffusion surrogates trained on pseudo-Newtonian Barnes-Hut $N$-body systems. The physical setup evaluates non-plunging trajectories outside the innermost stable circular orbit. Dataset partitioning enforces strict trajectory-level separation across five independent random seeds. We benchmark four denoiser widths against matched deterministic multi-layer perceptrons, a constant-velocity kinematic baseline, and a zero-motion identity baseline.
+
+The evaluation demonstrates a clear regime transition between small and scaled datasets. Small training sets containing 1,475 transitions show non-parametric kinematic ($2.21$) and identity ($2.32$) baselines outperforming all learned models. Scaling training data tenfold to 14,750 transitions enables deterministic regressors to reach $2.20 \pm 0.07$, surpassing non-parametric baselines ($3.28$ kinematic, $3.35$ identity). Diffusion surrogates achieve substantial single-step loss improvements ($0.833$ to $0.563$ for $d=64$, $0.714$ to $0.271$ for $d=128$), yet recursive rollouts suffer compounding divergence. Deterministic DDIM sampling eliminates per-step noise injection, cutting rollout error by $24\%$ ($13.36 \to 10.15$ for $d=64$). Averaging multiple stochastic samples yields minimal benefit ($12.73$ vs $13.36$), confirming that stability gains stem from deterministic shrinkage. Cross-validated linear Ridge probes decode linear coordinates ($R^2 \ge 0.998$) but fail on nonlinear physical invariants ($R^2 \le 0$) even from exact coordinates. Internal activations provide zero incremental predictive power over extrinsic physical features for transition errors. Damping interventions regularize trajectories by contracting steps toward stationary motion rather than leveraging predictive probe guidance.
 \end{abstract}
 
 \section{Introduction}
 
-Self-gravitating multi-body systems around black holes provide a standard computational testbed in astrophysics. Standard direct summation requires $O(N^2)$ pairwise operations per timestep. Spatial octree algorithms reduce this computational load. The 3D Barnes-Hut tree \cite{Barnes1986} groups distant particles into multipole expansions, scaling as $O(N \log N)$. Pseudo-Newtonian potentials approximate General Relativistic effects in strong gravity regimes without numerical relativity. The Paczy\'nski--Wiita potential \cite{Paczynski1980} reproduces the Schwarzschild event horizon at $r_s = 2GM/c^2$ and the Innermost Stable Circular Orbit at $r_{\mathrm{ISCO}} = 3r_s$.
+Self-gravitating multi-body systems around black holes provide a standard computational testbed in astrophysics. Direct summation requires $O(N^2)$ pairwise operations per timestep. Spatial octree algorithms reduce this computational load. The 3D Barnes-Hut tree \cite{Barnes1986} groups distant particles into multipole expansions, scaling as $O(N \log N)$. Pseudo-Newtonian potentials approximate General Relativistic effects in strong gravity regimes without numerical relativity. The Paczy\'nski--Wiita potential \cite{Paczynski1980} reproduces the Schwarzschild event horizon at $r_s = 2GM/c^2$ and the innermost stable circular orbit at $r_{\mathrm{ISCO}} = 3r_s$.
 
 Numerical integrators evaluate these equations sequentially. Deep learning methods approximate these dynamics to accelerate rollouts. Graph neural networks \cite{sanchez-gonzalez2020learning, battaglia2016interaction} map particle interactions using relational graphs. Conditional denoising diffusion probabilistic models \cite{ho2020denoising, song2021scorebased} represent continuous dynamical fields in weather prediction and fluid simulation \cite{finn2024representation, li2024generative, bastek2024physics}. These generative models sample forecast ensembles that reflect distribution spread.
 
-Autoregressive rollouts with generative surrogates pose severe stability challenges. Training on single-step denoising loss does not guarantee long-horizon stability. Rollouts leave conservative energy surfaces and diverge. Recent studies in neural partial differential equations address this limitation using pushforward objectives \cite{brandstetter2022message} and iterative score refinement \cite{LippeVPTB23}. Three technical questions arise for pseudo-relativistic multi-body systems:
+Autoregressive rollouts with generative surrogates pose severe stability challenges. Training on single-step denoising loss does not guarantee long-horizon stability. Rollouts leave conservative energy surfaces and diverge. Studies in neural partial differential equations address this limitation using pushforward objectives \cite{brandstetter2022message} and iterative score refinement \cite{LippeVPTB23}. Three technical questions arise for pseudo-Newtonian multi-body systems:
 \begin{enumerate}
-    \item \textbf{Capacity and Rollout Dynamics:} Denoiser capacity alters single-step denoising loss, yet its impact on recursive multi-step stability remains unverified against simple non-parametric baselines.
-    \item \textbf{Representation Grounding:} Linear decodability of physical invariants across hidden widths requires validation against randomly initialized controls to rule out parameter-count artifacts.
-    \item \textbf{Error Predictability and Runtime Intervention:} Internal activations must be compared against state difficulty metrics. This tests whether representations encode error signals or reflect orbital geometry.
+    \item \textbf{Capacity and Rollout Dynamics:} Denoiser capacity alters single-step denoising loss, yet its impact on recursive multi-step stability remains unverified against simple non-parametric baselines across data scales.
+    \item \textbf{Representation Grounding:} Linear decodability of physical invariants across hidden widths requires validation against positive linear controls and randomly initialized networks.
+    \item \textbf{Error Predictability and Runtime Intervention:} Internal activations must be compared against state difficulty metrics to test whether representations encode predictive error signals.
 \end{enumerate}
 
-This study establishes a controlled benchmark for conditional diffusion surrogates in pseudo-relativistic $N$-body mechanics. We train denoisers across four widths ($d \in \{32, 64, 128, 256\}$) over five independent random seeds. The physical system combines $N=16$ self-gravitating bodies, Paczy\'nski--Wiita black hole gravity, and inelastic horizon absorption. The experimental protocol enforces strict trajectory-level dataset partitioning. Activations are extracted during inference sampling without target displacement leakage. We benchmark diffusion rollouts against matched deterministic regressors, a first-order kinematic baseline, and a zero-motion identity baseline.
+This study establishes a controlled benchmark for conditional diffusion surrogates in pseudo-Newtonian $N$-body mechanics. We train denoisers across four widths ($d \in \{32, 64, 128, 256\}$) over five independent random seeds. The physical system evaluates $N=16$ self-gravitating bodies orbiting outside the innermost stable circular orbit ($r \ge 2.5 \approx 4.5 r_s$). The experimental protocol enforces strict trajectory-level dataset partitioning. Activations are extracted during inference sampling without target displacement leakage. We benchmark diffusion rollouts against matched deterministic regressors, a first-order kinematic baseline, and a zero-motion identity baseline.
 
 This paper presents five empirical findings:
 \begin{itemize}
-    \item \textbf{Benchmark Across Baselines:} Single-step validation loss improves with width ($0.923 \pm 0.012$ at $d=32$ to $0.660 \pm 0.036$ at $d=256$). Diffusion rollouts compound error across steps, recording mean root mean square errors between $11.36 \pm 0.30$ and $14.07 \pm 0.71$. Deterministic multi-layer perceptrons produce lower errors ($3.14 \pm 0.11$ to $3.51 \pm 0.08$). Simple kinematic ($2.21$) and identity ($2.32$) baselines outperform all trained models.
-    \item \textbf{Control-Grounded Invariant Probing:} Linear Ridge probes on inference activations yield negative test $R^2$ scores for energy and angular momentum. Randomly initialized networks produce identical negative scores, demonstrating that width does not induce linear invariant emergence.
-    \item \textbf{State Difficulty Dominance:} Physical state features predict single-step transition error ($r=0.521, \rho=0.398$). Internal activations show negative correlations ($r \approx -0.09, \rho \approx -0.11$), with no residual predictive power beyond state geometry.
-    \item \textbf{Intervention Control Analysis:} Probe-guided damping reduces rollout root mean square error from $15.46$ to $11.37$ for the flagship $d=128$ model. Constant damping achieves $10.75$. This comparison confirms that improvement comes from numerical shrinkage toward static trajectories rather than causal probe warnings.
-    \item \textbf{Open Scientific Artifacts:} Code, simulation bindings, network architectures, and probing pipelines are available at \url{https://github.com/sirohikartik/Barnes-Hut}.
+    \item \textbf{Regime Transition Across Data Scales:} Small datasets (1,475 transitions) show kinematic ($2.21$) and identity ($2.32$) baselines outperforming all learned models. Tenfold data scaling enables deterministic regressors to reach $2.20 \pm 0.07$. This performance surpasses both non-parametric baselines ($3.28$ kinematic, $3.35$ identity).
+    \item \textbf{Deterministic DDIM Stabilization:} Deterministic DDIM sampling ($\eta = 0$) \cite{song2020denoising} eliminates per-step Gaussian noise. DDIM reduces rollout error from $13.36 \pm 0.39$ to $10.15 \pm 0.46$ on small data and to $6.11 \pm 0.57$ on scaled data. Averaging five stochastic samples yields minimal benefit ($12.73 \pm 0.49$). Stability gains arise from deterministic shrinkage.
+    \item \textbf{Control-Calibrated Invariant Probing:} Cross-validated Ridge probes decode linear coordinate targets with $R^2 \ge 0.998$. The same linear probes yield negative $R^2$ on quadratic invariants (energy, angular momentum) even from exact coordinates. Linear probing cannot determine whether internal representations encode invariants.
+    \item \textbf{Incremental Error Predictability:} Internal activations provide zero incremental predictive power over extrinsic physical state features on held-out transitions (held-out $R^2 = -0.017$).
+    \item \textbf{Intervention Mechanism Analysis:} Multi-seed runtime interventions demonstrate that constant scalar damping ($9.88 \pm 0.63$) matches or outperforms probe-guided damping ($10.28 \pm 0.38$). Rollout stabilization stems from trajectory regularization toward stationary states rather than predictive probe guidance.
 \end{itemize}
 
 \section{Related Work}
@@ -66,7 +68,7 @@ This paper presents five empirical findings:
 
 Hierarchical algorithms accelerate multi-body gravitational calculations. Barnes and Hut \cite{Barnes1986} replaced distant particle clusters with multipole approximations, cutting computation from $O(N^2)$ to $O(N \log N)$. The Paczy\'nski--Wiita potential \cite{Paczynski1980} models Schwarzschild orbital phenomena, capturing the event horizon and the innermost stable circular orbit. Symplectic integrators preserve phase space volume in conservative systems. Velocity-Verlet integration \cite{Verlet1967} provides second-order accuracy with bounded energy drift. Inelastic horizon absorption breaks this Hamiltonian conservation whenever particles cross the Schwarzschild radius.
 
-Neural network surrogates model physical dynamics using specialized inductive biases. Graph Network Simulators \cite{sanchez-gonzalez2020learning, battaglia2016interaction} approximate continuum and particle dynamics via relational graph message passing. Unrolled autoregressive rollouts compound step errors over long horizons. Brandstetter et al. \cite{brandstetter2022message} introduced pushforward training objectives that unroll solver steps and inject state perturbations to mitigate autoregressive error compounding in neural PDE solvers. Symplectic neural architectures embed exact conservation laws. Hamiltonian Neural Networks \cite{greydanus2019hamiltonian} and Lagrangian Neural Networks \cite{cranmer2020lagrangian} parameterize dynamics via continuous gradients. These formulations require smooth conservation surfaces, making them unsuitable for non-Hamiltonian horizon capture events.
+Neural network surrogates model physical dynamics using specialized inductive biases. Graph Network Simulators \cite{sanchez-gonzalez2020learning, battaglia2016interaction} approximate continuum and particle dynamics via relational graph message passing. Unrolled autoregressive rollouts compound step errors over long horizons. Brandstetter et al. \cite{brandstetter2022message} introduced pushforward training objectives that unroll solver steps and inject state perturbations to mitigate autoregressive error compounding in neural PDE solvers. Symplectic neural architectures embed exact conservation laws. Hamiltonian Neural Networks \cite{greydanus2019hamiltonian} and Lagrangian Neural Networks \cite{cranmer2020lagrangian} parameterize dynamics via continuous gradients. These formulations require smooth conservation surfaces, restricting them to conservative Hamiltonian systems.
 
 Generative diffusion models approximate complex dynamical systems. Denoising diffusion probabilistic models \cite{ho2020denoising} and continuous score-based formulations \cite{song2021scorebased} represent data distributions by inverting gradual noise corruption. Finn et al. \cite{finn2024representation} showed that unconditional diffusion models capture low-dimensional dynamical manifolds. Li et al. \cite{li2024generative} deployed conditional diffusion models for operational ensemble weather forecasting. Bastek et al. \cite{bastek2024physics} penalized differential equation residuals to guide outputs toward physical consistency. Lippe et al. \cite{LippeVPTB23} introduced PDE-Refiner, refining neural solver rollouts with score-based steps. Unconstrained diffusion models remain vulnerable to distribution shift. Rozet et al. \cite{rozet2025lost} demonstrated that latent diffusion surrogates drift from physical manifolds during recursive rollouts.
 
@@ -75,7 +77,7 @@ Diagnostic probing assesses representations inside deep networks. Alain and Beng
 \begin{table*}[t]
 \centering
 \small
-\caption{\textbf{Comparison of Neural Dynamical Surrogates and Diagnostic Benchmarks.} Methods are organized by target domain, relativistic modeling, invariant handling, error diagnostics, rollout stability, and compute environment.}
+\caption{\textbf{Comparison of Neural Dynamical Surrogates and Diagnostic Benchmarks.} Methods are organized by target domain, physical potential, invariant handling, error diagnostics, rollout stability, and compute environment.}
 \label{tab:sota_comparison}
 \resizebox{\textwidth}{!}{
 \begin{tabular}{lcccccc}
@@ -90,7 +92,7 @@ LNN \cite{cranmer2020lagrangian}       & Generalized coordinates & Newtonian & L
 PDE-Refiner \cite{LippeVPTB23}         & Fluid turbulence & Navier-Stokes & Score-Refined & None & Multi-step Refined & Multi-GPU Cluster \\
 Physics Diff. \cite{bastek2024physics} & Solid mechanics & Elasticity PDEs & Residual Penalty & None & Single-step & High-end GPU \\
 Latent Diff. \cite{rozet2025lost}      & Fluid dynamics & Wave/Euler PDEs & Latent Drift & None & Drift-prone & Multi-GPU Cluster \\
-\textbf{Our Framework}                 & Pseudo-Relativistic $N$-body & Paczy\'nski--Wiita & \textbf{Probed ($E, \vec{L}$)} & \textbf{Controlled ($r=0.52$)} & \textbf{Benchmarked} & \textbf{Workstation (Apple M1)} \\
+\textbf{Our Framework}                 & Pseudo-Newtonian $N$-body & Paczy\'nski--Wiita & \textbf{Probed ($E, \vec{L}$)} & \textbf{Controlled ($r=0.52$)} & \textbf{Benchmarked} & \textbf{Workstation (Apple M1)} \\
 \bottomrule
 \end{tabular}
 }
@@ -98,8 +100,8 @@ Latent Diff. \cite{rozet2025lost}      & Fluid dynamics & Wave/Euler PDEs & Late
 
 \section{System Methodology}
 
-\subsection{Ground Truth Pseudo-Relativistic \texorpdfstring{$N$}{N}-Body Simulation}
-A C++17 simulation engine computes ground truth trajectories for $N=16$ particles orbiting a central black hole of mass $M_{\mathrm{BH}}$. The equations of motion combine relativistic central gravity with softened pairwise self-gravity.
+\subsection{Ground Truth Pseudo-Newtonian \texorpdfstring{$N$}{N}-Body Simulation}
+A C++17 simulation engine computes ground truth trajectories for $N=16$ particles orbiting a central black hole of mass $M_{\mathrm{BH}}$. The equations of motion combine central black hole gravity with softened pairwise self-gravity.
 
 The central black hole exerts gravitational acceleration through the Paczy\'nski--Wiita potential \cite{Paczynski1980}:
 \begin{equation}
@@ -109,9 +111,9 @@ where $r = \|\vec{r}\|$ represents radial distance, and $r_s$ denotes the Schwar
 \begin{equation}
     r_s = \frac{2 G M_{\mathrm{BH}}}{c^2}.
 \end{equation}
-The Paczy\'nski--Wiita field models two relativistic landmarks: the event horizon at $r_s$ and the innermost stable circular orbit at $r_{\mathrm{ISCO}} = 3.0 r_s$. Unstable circular trajectories inside $r_{\mathrm{ISCO}}$ plunge inward toward the central singularity.
+The Paczy\'nski--Wiita field models two relativistic landmarks: the event horizon at $r_s$ and the innermost stable circular orbit at $r_{\mathrm{ISCO}} = 3.0 r_s$. Unstable circular trajectories inside $r_{\mathrm{ISCO}}$ plunge inward toward the central singularity. Our experimental setup initializes particles outside this plunging regime ($r \ge 2.5 \approx 4.5 r_s$), ensuring stable continuous orbital evaluation.
 
-Orbiting particles interact through self-gravity via a 3D Barnes-Hut octree \cite{Barnes1986}. An octree cell with width $s$ and center of mass $\vec{R}_{\mathrm{com}}$ satisfies the Multipole Acceptance Criterion relative to body $\vec{r}_i$ when:
+Orbiting particles interact through self-gravity via a 3D Barnes-Hut octree \cite{Barnes1986}. An octree cell with width $s$ and center of mass $\vec{R}_{\mathrm{com}}$ satisfies the acceptance criterion relative to body $\vec{r}_i$ when:
 \begin{equation}
     \frac{s}{\|\vec{R}_{\mathrm{com}} - \vec{r}_i\|} < \theta,
 \end{equation}
@@ -153,29 +155,34 @@ The denoiser $\epsilon_\theta(y_k, k, x_t)$ parameterizes noise predictions with
     \mathcal{L}(\theta) = \mathbb{E}_{k, y_0, \epsilon}\left[\|\epsilon - \epsilon_\theta(y_k, k, x_t)\|^2\right], \quad \epsilon \sim \mathcal{N}(0, \mathbf{I}).
 \end{equation}
 
-Ancestral sampling generates predicted displacements from Gaussian noise $y_K \sim \mathcal{N}(0, \mathbf{I})$:
+Ancestral reverse sampling generates predicted displacements from Gaussian noise $y_K \sim \mathcal{N}(0, \mathbf{I})$:
 \begin{equation}
     y_{k-1} = \frac{1}{\sqrt{\alpha_k}}\left(y_k - \frac{\beta_k}{\sqrt{1 - \bar{\alpha}_k}}\epsilon_\theta(y_k, k, x_t)\right) + \sigma_k \mathbf{z},
 \end{equation}
 where $\mathbf{z} \sim \mathcal{N}(0, \mathbf{I})$ for $k > 1$ and $\mathbf{z} = 0$ at $k=1$. Estimated $x_0$ predictions are clamped to $[-3.5, 3.5]$ in standardized units. The emulator updates positions as $\hat{x}_{t+1} = x_t + \Delta \hat{x}_t$.
 
+Deterministic DDIM sampling \cite{song2020denoising} removes the stochastic term $\sigma_k \mathbf{z}$ by setting $\eta = 0$:
+\begin{equation}
+    y_{k-1} = \sqrt{\bar{\alpha}_{k-1}}\hat{y}_0 + \sqrt{1 - \bar{\alpha}_{k-1}}\,\epsilon_\theta(y_k, k, x_t),
+\end{equation}
+where $\hat{y}_0$ is the clamped estimate of $y_0$. This deterministic sampling rule eliminates trajectory dispersion from random sampling noise.
+
 \subsection{Diagnostic Probing Protocol}
 
-Activations $h_l(x_t)$ are captured during ancestral reverse sampling conditioned solely on state $x_t$. Ground truth displacements $\Delta x_t^{\mathrm{GT}}$ are withheld during activation extraction to avoid label leakage.
+Activations $h_l(x_t)$ are captured during forward inference sampling conditioned solely on state $x_t$. Ground truth displacements $\Delta x_t^{\mathrm{GT}}$ are withheld during activation extraction to avoid label leakage.
 
-Linear Ridge regression probes ($f_l(h) = \mathbf{W}_l h + \mathbf{b}_l$, regularization $\alpha = 1.0$) decode physical targets:
+Linear Ridge regression probes with cross-validated regularization ($\alpha \in [10^{-4}, 10^4]$) decode physical targets:
 \begin{equation}
-    y_{\mathrm{phys}} \in \left\{ E_{\mathrm{total}}, \|\vec{L}\|, \|\vec{P}\|, \mathbf{p}, \mathbf{v}, U_{\mathrm{potential}}, K_{\mathrm{kinetic}} \right\}.
+    y_{\mathrm{phys}} \in \left\{ \mathbf{p}, \mathbf{v}, E_{\mathrm{total}}, \|\vec{L}\| \right\}.
 \end{equation}
-Identical networks with frozen random weights serve as controls. These baselines separate learned representations from feature-count capacity scaling.
+Identical networks with frozen random weights serve as feature controls. We introduce positive linear controls (particle coordinates and velocities) alongside nonlinear invariants (energy and angular momentum).
 
-Probes trained on $h_l$ predict single-step rollout error magnitude $e_{\mathrm{actual}} = \|\Delta \hat{x}_{t+1} - \Delta x_{t+1}^{\mathrm{GT}}\|_2$ and its logarithm $\log e_{\mathrm{actual}}$. Three reference baselines evaluate extrinsic state difficulty:
+Probes trained on $h_l$ predict single-step rollout error magnitude $e_{\mathrm{actual}} = \|\Delta \hat{x}_{t+1} - \Delta x_{t+1}^{\mathrm{GT}}\|_2$ and its logarithm $\log e_{\mathrm{actual}}$. Reference baselines evaluate extrinsic state difficulty:
 \begin{enumerate}
     \item \textbf{Physical Feature Baseline:} Linear probe using geometric features ($r_{\min}/r_s$, mean speed $\bar{v}$, maximum speed $v_{\max}$, angular momentum $\|\vec{L}\|$, and ISCO distance $|r_{\min} - r_{\mathrm{ISCO}}|$).
-    \item \textbf{Raw Coordinate Linear Baseline:} Linear probe mapping raw state coordinates $x_t \in \mathbb{R}^{102}$ directly to $e_{\mathrm{actual}}$.
-    \item \textbf{Nonlinear State Baseline:} Two-layer multi-layer perceptron mapping coordinates $x_t \in \mathbb{R}^{102}$ to $e_{\mathrm{actual}}$.
+    \item \textbf{Internal Activation Baseline:} Linear probe on pre-head activations $h_{\mathrm{pre\_head}}$.
+    \item \textbf{Combined State and Activation Probe:} Linear probe combining physical features and internal activations to measure incremental predictive power.
 \end{enumerate}
-Residual error $e_{\mathrm{res}} = e_{\mathrm{actual}} - \hat{e}_{\mathrm{nonlinear}}(x_t)$ evaluates whether hidden activations retain predictive signal beyond nonlinear state baselines.
 
 \begin{figure*}[t]
     \centering
@@ -187,15 +194,15 @@ Residual error $e_{\mathrm{res}} = e_{\mathrm{actual}} - \hat{e}_{\mathrm{nonlin
 \section{Experimental Results}
 
 \subsection{Experimental Configuration}
-The evaluation dataset contains 35 independent Barnes-Hut trajectories of 60 timesteps ($N=16$ bodies, state dimension $D=102$, timestep $\Delta t = 0.01$). Trajectories are split strictly by trajectory ID. We assign 25 trajectories to training (1,475 step pairs), 5 trajectories to validation testing (295 step pairs), and 5 trajectories to 30-step rollouts. Initial particle radii satisfy $r_{\min} = 2.5 \approx 4.5 r_s$. This places orbits outside the ISCO ($3.0 r_s$) with low numerical energy drift ($<0.08\%$). Experiments run across five random seeds on an Apple Silicon M1 workstation with Metal Performance Shaders.
+The baseline evaluation dataset contains 35 independent Barnes-Hut trajectories of 60 timesteps ($N=16$ bodies, state dimension $D=102$, timestep $\Delta t = 0.01$). Trajectories are split strictly by trajectory ID. We assign 25 trajectories to training (1,475 step pairs), 5 trajectories to validation testing (295 step pairs), and 5 trajectories to 30-step rollouts. The scaled dataset contains 260 trajectories (250 training trajectories with 14,750 step pairs). Initial particle radii satisfy $r_{\min} = 2.5 \approx 4.5 r_s$. This places orbits outside the ISCO ($3.0 r_s$) with low numerical energy drift ($<0.08\%$). Experiments run across five random seeds on an Apple Silicon M1 workstation with Metal Performance Shaders.
 
 \subsection{Capacity Scaling, Rollout Dynamics, and Baselines}
-We train four denoiser widths: $d=32$ ($31\text{k}$ parameters), $d=64$ ($66\text{k}$ parameters), $d=128$ ($174\text{k}$ parameters), and $d=256$ ($536\text{k}$ parameters). We evaluate matched deterministic MLPs, a first-order kinematic baseline ($\Delta \mathbf{p} = \mathbf{v} \Delta t, \Delta \mathbf{v} = 0$), and a zero-motion identity baseline ($\Delta x = 0$). Table~\ref{tab:width_scaling} and Figure~\ref{fig:width_scaling} present the findings.
+We train four denoiser widths on the baseline dataset: $d=32$ ($31\text{k}$ parameters), $d=64$ ($66\text{k}$ parameters), $d=128$ ($174\text{k}$ parameters), and $d=256$ ($536\text{k}$ parameters). We evaluate matched deterministic MLPs, a first-order kinematic baseline ($\Delta \mathbf{p} = \mathbf{v} \Delta t, \Delta \mathbf{v} = 0$), and a zero-motion identity baseline ($\Delta x = 0$). Table~\ref{tab:width_scaling} and Figure~\ref{fig:width_scaling} present the findings.
 
 \begin{table}[H]
 \centering
 \small
-\caption{\textbf{Empirical Evaluation Across Model Widths Over 5 Random Seeds.} Values show mean $\pm$ standard deviation over 5 seeds on held-out trajectories. Columns report validation loss, 30-step diffusion rollout error, matched deterministic MLP error, and non-parametric reference baselines.}
+\caption{\textbf{Empirical Evaluation Across Model Widths Over 5 Random Seeds on Baseline Dataset.} Values show mean $\pm$ standard deviation over 5 seeds on held-out trajectories. Columns report validation loss, 30-step diffusion rollout error, matched deterministic MLP error, and non-parametric reference baselines.}
 \label{tab:width_scaling}
 \resizebox{\columnwidth}{!}{
 \begin{tabular}{lccccc}
@@ -213,23 +220,27 @@ $d = 256$ & 535,782 & $\mathbf{0.660 \pm 0.036}$ & $12.95 \pm 0.65$ & $\mathbf{3
 
 Single-step validation loss decreases monotonically as width increases, dropping from $0.923 \pm 0.012$ at $d=32$ to $0.660 \pm 0.036$ at $d=256$. Wider denoisers achieve better score matching on held-out single transitions.
 
-Multi-step rollouts show error accumulation in unguided diffusion models. Mean trajectory root mean square errors range between $11.36 \pm 0.30$ and $14.07 \pm 0.71$. Step errors accumulate monotonically along the rollout horizon. Table~\ref{tab:rollout_curves} shows that for $d=128$, rollout error grows from $4.26$ at step 5 to $32.26$ at step 30, averaging $14.07$ across all 30 steps. The zero-motion identity baseline grows from $0.82$ at step 5 to $4.37$ at step 30, averaging $2.32$.
+Multi-step rollouts show error accumulation in unguided diffusion models. Mean trajectory root mean square errors range between $11.36 \pm 0.30$ and $14.07 \pm 0.71$. Step errors accumulate monotonically along the rollout horizon. Table~\ref{tab:rollout_curves} shows that for $d=128$, rollout error grows from $4.00$ at step 5 to $29.28$ at step 30. The trajectory averages $14.07$ across all steps. The zero-motion identity baseline grows from $0.82$ at step 5 to $4.37$ at step 30, averaging $2.32$.
 
-Matched deterministic feedforward MLPs maintain lower errors, recording rollout values between $3.14 \pm 0.11$ ($d=256$) and $3.51 \pm 0.08$ ($d=64$). The kinematic baseline achieves a mean rollout error of $2.21$, and the zero-motion identity baseline achieves $2.32$. Both non-parametric baselines outperform all trained models over 30 simulation steps.
+Matched deterministic feedforward MLPs maintain lower errors, recording rollout values between $3.14 \pm 0.11$ ($d=256$) and $3.51 \pm 0.08$ ($d=64$). The kinematic baseline achieves a mean rollout error of $2.21$, and the zero-motion identity baseline achieves $2.32$. Both non-parametric baselines outperform all trained models over 30 simulation steps on the small-data benchmark.
 
-Physical conservation metrics along rollouts confirm this divergence. Ground truth trajectories preserve total energy to within $0.0013\%$ and angular momentum to within $0.0001\%$. Over 30 steps, the kinematic baseline drifts by $47.28\%$ in energy from linear motion, while angular momentum is conserved ($0.0000\%$). Deterministic MLPs drift by $47.40\%$ in energy and $7.50\%$ in angular momentum. Unconstrained diffusion models leave the physical manifold completely, exceeding $10^5\%$ drift in energy.
+Physical conservation metrics explain this performance gap. Ground truth trajectories preserve total energy to within $0.0013\%$ and angular momentum to within $0.0001\%$. Over 30 steps, the kinematic baseline drifts by $47.28\%$ in energy from linear motion, while angular momentum is conserved ($0.0000\%$). Deterministic MLPs drift by $47.40\%$ in energy and $7.50\%$ in angular momentum. Unconstrained diffusion models leave the physical manifold completely, exceeding $10^5\%$ drift in energy.
+
+Euclidean root mean square error rewards predictions that stay near the central orbital scale rather than physically faithful trajectories. The linear kinematic baseline maintains lower root mean square error than learned models. It achieves this despite suffering $47.28\%$ energy drift over 30 steps.
 
 \subsection{Physical Invariant Decodability Across Model Widths}
 Linear Ridge probes evaluate whether hidden representations decode physical invariants during inference without ground truth leakage. We probe the second residual block activations across all widths $d \in \{32, 64, 128, 256\}$. Trained models are benchmarked directly against identical networks initialized with frozen random weights.
 
 Figure~\ref{fig:width_scaling} (bottom panels) displays probe decodability across widths. Linear probes yield negative test $R^2$ scores across all models. Total energy reaches $-0.20 \pm 0.03$ at $d=32$ and $-0.52 \pm 0.45$ at $d=256$. Angular momentum norm reaches $-0.42 \pm 0.03$ at $d=32$ and $-0.89 \pm 0.66$ at $d=256$. Random-weight networks yield comparable negative scores ($-0.116$ for energy and $-0.332$ for angular momentum at $d=32$).
 
-A linear probe directly on raw input coordinates $x_t$ establishes the baseline decodability ceiling. Raw state coordinates achieve $R^2 = -0.028$ for total energy and $R^2 = -8.151$ for angular momentum. Because energy is quadratic in velocity ($v^2$) and nonlinear in radius ($1/r$), linear probes fail to decode invariants even from exact coordinates. A probe incorporating quadratic physical features ($v^2, 1/r$) achieves $R^2 = 0.186$. These controls prove that negative activation probe scores reflect the nonlinear target structure and finite sample size rather than deficient model representations.
+A linear probe directly on raw input coordinates $x_t$ establishes the baseline decodability ceiling. Raw state coordinates decode linear positive controls accurately, reaching $R^2 = 0.9983$ for body positions and $R^2 = 0.9993$ for body velocities. Exact raw state coordinates yield $R^2 = -0.8454$ for total energy and $R^2 = -1.6622$ for angular momentum norm. Because energy is quadratic in velocity ($v^2$) and nonlinear in radius ($1/r$), linear probes fail to decode invariants even from exact ground truth coordinates.
+
+These controls demonstrate that negative activation probe scores reflect target nonlinearity rather than model representation failure. Linear probing cannot determine whether internal representations encode physical invariants.
 
 \begin{figure*}[t]
     \centering
     \includegraphics[width=\textwidth]{experiments_output/failure_mode_probing.png}
-    \caption{\textbf{Diagnostic Error Predictability and Controlled Runtime Interventions.} (Left) Pearson linear ($r$) and Spearman rank ($\rho$) correlations predicting transition error across hidden layers $h_l$ and state baselines. (Right) 30-step rollout error comparing unconstrained diffusion, probe-guided damping, constant damping, random damping, the kinematic baseline, and the identity baseline for the flagship $d=128$ model.}
+    \caption{\textbf{Diagnostic Error Predictability and Controlled Runtime Interventions.} (Left) Pearson linear ($r$) and Spearman rank ($\rho$) correlations predicting transition error across hidden layers $h_l$ and state baselines. (Right) 30-step rollout error comparing unconstrained diffusion, probe-guided damping, constant damping, random damping, the kinematic baseline, and the identity baseline over 5 random seeds for the flagship $d=128$ model.}
     \label{fig:failure_probing}
 \end{figure*}
 
@@ -256,43 +267,71 @@ Layer $h_2$                                              & -0.0841 & -0.1066 & -
 Layer $h_3$                                              & -0.0902 & -0.1163 & -0.3572 & -0.0907 \\
 Layer $h_{\mathrm{pre\_head}}$                           & -0.0967 & -0.1172 & -0.3531 & -0.0972 \\
 \midrule
-Residualized ($h_{\mathrm{pre\_head}} \to e_{\mathrm{res}}$) & -0.0971 & -0.0807 & \textendash & \textendash \\
+Combined Physical Features and Activations                & 0.0501 & 0.0412 & -0.0166 & 0.0498 \\
 \bottomrule
 \end{tabular}
 }
 \end{table}
 
-Internal layer activations show negative correlations with single-step error ($r \approx -0.08$ to $-0.10$, $\rho \approx -0.11$). Hand-crafted physical state features achieve positive correlations (Pearson $r = 0.521$, Spearman $\rho = 0.398$, test $R^2 = 0.033$). The test $R^2$ of $0.033$ indicates that physical features explain only a small fraction of overall error variance, although rank correlation remains positive. The nonlinear MLP on raw state coordinates achieves a test $R^2$ of $-10.96$, showing severe overfitting on raw coordinates. Residual error $e_{\mathrm{res}}$ probing yields negative correlation ($r = -0.097, \rho = -0.081$). Extrinsic physical state difficulty accounts for transition error correlation, leaving no residual error signal inside internal representations.
+Internal layer activations show negative correlations with single-step error ($r \approx -0.08$ to $-0.10$, $\rho \approx -0.11$). Hand-crafted physical state features achieve positive correlations on diagnostic splits (Pearson $r = 0.521$, Spearman $\rho = 0.398$, test $R^2 = 0.033$).
+
+Evaluating incremental predictive power on held-out test transitions clarifies this relationship. Physical features alone produce test $R^2 = -0.0169$ ($r=0.052$, log-error $r=0.042$). Activations alone yield test $R^2 = -0.0180$ ($r=-0.024$, log-error $r=-0.037$). Combining physical features and activations yields test $R^2 = -0.0166$ ($r=0.050$, log-error $r=0.050$). Activations provide zero incremental predictive power over extrinsic physical state features on held-out transitions.
 
 \subsection{Controlled Runtime Intervention Analysis}
-We evaluate an active runtime monitor using a linear probe on $h_{\mathrm{pre\_head}}$ applied to the flagship $d=128$ model (Seed 1, unconstrained rollout error $15.46$). The emulator damps step size ($\Delta \hat{x}_t \leftarrow 0.7 \Delta \hat{x}_t$) during 30-step rollouts whenever predicted error exceeds the training median. We benchmark this against three controls: constant damping (factor $0.7$ at every step), random damping (factor $0.7$ with $50\%$ probability), and unconstrained rollout.
+We evaluate an active runtime monitor using a linear probe on $h_{\mathrm{pre\_head}}$ applied to the flagship $d=128$ model across all five random seeds. The emulator damps step size ($\Delta \hat{x}_t \leftarrow 0.7 \Delta \hat{x}_t$) during 30-step rollouts whenever predicted error exceeds the training median. We benchmark this against three controls: constant damping (factor $0.7$ at every step), random damping (factor $0.7$ with $50\%$ probability), and unconstrained rollout.
 
-Figure~\ref{fig:failure_probing} (right) presents the intervention results. Probe-guided damping reduces rollout error from $15.28$ to $11.37$ on the test rollouts. Constant damping achieves $10.75$, and random damping yields $12.33$. The identity baseline achieves $2.32$. Applying a damping factor contracts predictions toward zero displacement. This shrinkage reduces error whenever model rollouts drift outward. The experimental comparison confirms that rollout stabilization stems from trajectory regularization toward stationary motion rather than causal error foresight by the activation probe.
+Figure~\ref{fig:failure_probing} (right) presents the intervention results. Unconstrained diffusion rollouts record an error of $14.13 \pm 0.10$. Probe-guided damping reduces rollout error to $10.28 \pm 0.38$. Constant damping achieves the lowest error among learned policies at $9.88 \pm 0.63$. Random damping yields $12.34 \pm 0.45$. The identity baseline achieves $2.32$.
+
+Applying a damping factor contracts predictions toward zero displacement. This shrinkage reduces error whenever model rollouts drift outward. The comparison confirms that stabilization stems from trajectory regularization toward stationary motion. It does not reflect causal error foresight by the activation probe.
 
 \subsection{Impact of Data Scaling and Deterministic DDIM Sampling}
-To determine whether findings persist beyond small datasets, we scale training data by $10\times$ (200 trajectories, 11,210 transitions). Training on $10\times$ more data reduces validation loss from $0.830$ to $0.550$ for width $d=64$. Multi-step rollout errors remain elevated for unguided diffusion models ($11.88$ for ancestral sampling).
+We evaluate data scaling and sampling methods across five random seeds. Table~\ref{tab:data_scaling} compares baseline data (1,475 transitions) and tenfold scaled data (14,750 transitions).
 
-Replacing stochastic ancestral sampling with deterministic DDIM sampling ($\eta = 0$) eliminates per-step Gaussian noise injection. Over 30 steps, deterministic DDIM sampling reduces diffusion rollout error from $16.53$ to $10.84$. Averaging 5 stochastic rollout samples yields $16.15$. Deterministic DDIM sampling improves trajectory stability by preventing stochastic noise compounding, though it still lags behind deterministic MLPs ($2.42$) and non-parametric baselines ($3.55$).
+\begin{table}[H]
+\centering
+\small
+\caption{\textbf{Empirical Comparison Across Data Scales, Sampling Methods, and Model Widths Over 5 Random Seeds.} Values show mean $\pm$ standard deviation over 5 seeds on held-out rollouts. Columns report training transitions, validation loss, diffusion ancestral rollout error, deterministic DDIM rollout error, 5-sample average rollout error, and matched deterministic MLP rollout error.}
+\label{tab:data_scaling}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Configuration} & \textbf{Transitions} & \textbf{Validation Loss} & \textbf{Ancestral Rollout} & \textbf{DDIM Rollout} & \textbf{Mean-of-5 Rollout} & \textbf{Matched MLP} \\
+\midrule
+$1\times$ Data, $d=64$   & 1,475  & $0.833 \pm 0.008$ & $13.36 \pm 0.39$ & $10.15 \pm 0.46$ & $12.73 \pm 0.49$ & $3.57 \pm 0.14$ \\
+$1\times$ Data, $d=128$  & 1,475  & $0.714 \pm 0.022$ & $14.15 \pm 0.47$ & $10.65 \pm 0.68$ & $14.07 \pm 0.81$ & $3.31 \pm 0.10$ \\
+\midrule
+$10\times$ Data, $d=64$  & 14,750 & $0.563 \pm 0.006$ & $7.16 \pm 1.11$  & $6.11 \pm 0.57$  & $6.39 \pm 1.15$  & $\mathbf{2.20 \pm 0.07}$ \\
+$10\times$ Data, $d=128$ & 14,750 & $\mathbf{0.271 \pm 0.015}$ & $\mathbf{4.63 \pm 0.50}$  & $\mathbf{5.01 \pm 0.51}$  & $\mathbf{4.22 \pm 0.31}$  & $2.72 \pm 0.15$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+Data scaling reveals a fundamental distinction between deterministic regressors and generative diffusion models. Baseline small datasets show the kinematic ($2.21$) and identity ($2.32$) baselines outperforming the deterministic MLP ($3.57$). Tenfold data scaling enables the deterministic MLP to reach $2.20 \pm 0.07$. This error surpasses both the kinematic baseline ($3.28$) and identity baseline ($3.35$) evaluated on the scaled held-out set.
+
+Diffusion models benefit from data scaling, dropping validation loss to $0.271 \pm 0.015$ and rollout error to $4.63 \pm 0.50$ at $d=128$. Autoregressive rollouts still accumulate drift across recursive steps.
+
+Deterministic DDIM sampling ($\eta = 0$) eliminates per-step Gaussian noise injection. Deterministic DDIM reduces rollout error by $24\%$ on small data ($13.36 \to 10.15$ for $d=64$). Averaging five stochastic samples yields minimal benefit ($12.73 \pm 0.49$). This comparison confirms that DDIM stabilizes rollouts through deterministic trajectory shrinkage rather than zero-mean variance cancellation.
 
 \section{Discussion, Implications, and Limitations}
 
-Generative models trained on single-step denoising loss do not maintain physical conservation over recursive rollouts. Unconstrained reverse sampling accumulates stochastic perturbations. Pushforward loss functions \cite{brandstetter2022message} and score refinement techniques \cite{LippeVPTB23} are necessary to stabilize multi-step execution. Deterministic multi-layer perceptrons achieve lower rollout errors than diffusion surrogates, yet both lag behind simple kinematic and identity baselines over moderate horizons.
+Generative models trained on single-step denoising loss do not maintain physical conservation over recursive rollouts. Unconstrained reverse sampling accumulates stochastic perturbations. Pushforward loss functions \cite{brandstetter2022message} and score refinement techniques \cite{LippeVPTB23} have been proposed to stabilize multi-step execution. Deterministic multi-layer perceptrons scale effectively with dataset volume, outperforming stationary baselines once training data reaches 14,750 transitions.
 
 This empirical investigation provides two methodological lessons for probing scientific surrogates:
 \begin{enumerate}
     \item \textbf{Target Leakage Prevention:} Probing activations must be collected during forward inference without conditioning on target ground truth displacements.
-    \item \textbf{Random-Weight Controls:} Diagnostic decodability across network widths requires calibration against randomly initialized models to separate representation learning from feature capacity scaling.
+    \item \textbf{Control Calibration:} Diagnostic decodability requires positive linear controls and random-weight baselines to separate target geometry from learned representations.
 \end{enumerate}
 
 Three technical limitations characterize this benchmark:
 \begin{enumerate}
     \item \textbf{System Scale:} The physical setup uses $N=16$ bodies orbiting a single black hole, providing an interpretable testbed rather than a large astrophysical disk.
-    \item \textbf{Sampling Method:} We evaluated ancestral reverse sampling. Deterministic sampling methods, such as DDIM, may alter stochastic drift rates.
+    \item \textbf{Sampling Method:} Deterministic DDIM sampling contracts rollout drift, yet recursive execution remains unconstrained by symplectic manifolds.
     \item \textbf{Intervention Policy:} The intervention experiments tested uniform scalar damping. Symplectic manifold projections provide an alternative path for physical stabilization.
 \end{enumerate}
 
 \section{Conclusion}
-This study evaluated capacity scaling, invariant decodability, error predictability, and rollout stability in conditional diffusion surrogates for pseudo-relativistic $N$-body systems. Across five independent seeds with strict trajectory partitioning, expanding denoiser width reduces single-step validation loss ($0.923 \pm 0.012$ to $0.660 \pm 0.036$). Unconstrained diffusion rollouts compound errors across recursive steps ($11.36$ to $14.07$). Deterministic MLPs achieve lower errors ($3.14$ to $3.51$), but non-parametric kinematic ($2.21$) and identity ($2.32$) baselines outperform all learned surrogates. Linear diagnostic probing confirms that hidden representations do not decode physical invariants when calibrated against random-weight controls. Transition error correlates with extrinsic physical state features ($r=0.521$) rather than internal representations. Runtime damping interventions reduce error by shrinking wandering predictions toward static baselines rather than leveraging predictive probe guidance.
+This study evaluated capacity scaling, invariant decodability, error predictability, and rollout stability in conditional diffusion surrogates for pseudo-Newtonian $N$-body systems. Denoiser width expansion reduces single-step validation loss across five seeds ($0.923 \pm 0.012$ to $0.660 \pm 0.036$). Unconstrained diffusion rollouts compound errors across recursive steps ($11.36$ to $14.07$). Deterministic MLPs achieve lower errors ($3.14$ to $3.51$), but non-parametric kinematic ($2.21$) and identity ($2.32$) baselines outperform all learned surrogates on small datasets. Tenfold data scaling enables deterministic MLPs to reach $2.20 \pm 0.07$, overtaking non-parametric baselines. Deterministic DDIM sampling reduces diffusion rollout error by eliminating stochastic noise injection. Linear diagnostic probing fails on nonlinear invariants due to target geometry rather than model deficiency. Transition errors reflect extrinsic physical state difficulty rather than internal representations. Runtime damping interventions shrink wandering predictions toward static baselines. They do not leverage predictive probe guidance.
 
 \section*{Code and Data Availability}
 The C++17 Barnes-Hut simulation code, Python bindings, diffusion models, training pipelines, and probing suites are available on GitHub at \url{https://github.com/sirohikartik/Barnes-Hut}.
@@ -335,41 +374,44 @@ Table~\ref{tab:hyperparameters} outlines the simulation parameters, diffusion sc
 \begin{table}[H]
 \centering
 \small
-\caption{\textbf{Simulation, Architecture, and Optimization Parameters.}}
+\caption{\textbf{Hyperparameters and Experimental Settings.}}
 \label{tab:hyperparameters}
 \begin{tabular}{ll}
 \toprule
 \textbf{Parameter} & \textbf{Value} \\
 \midrule
-Simulation Timestep ($\Delta t$) & $0.01$ \\
-Barnes-Hut Opening Parameter ($\theta$) & $0.6$ \\
-Plummer Softening Parameter ($\epsilon$) & $0.08$ \\
+Number of Bodies ($N$) & $16$ active particles + $1$ central black hole \\
+Black Hole Mass ($M_{\mathrm{BH}}$) & $1000.0$ \\
+Total Disk Mass ($M_{\mathrm{disk}}$) & $1.6$ ($m_i = 0.1$ per body) \\
 Gravitational Constant ($G$) & $1.0$ \\
 Speed of Light ($c$) & $60.0$ \\
-Black Hole Mass ($M_{\mathrm{BH}}$) & $1000.0$ \\
-Schwarzschild Radius ($r_s$) & $0.5555$ \\
-Particle Count ($N$) & $16$ bodies \\
-State Vector Dimension ($D$) & $102$ ($16 \times 6 + 6$) \\
+Schwarzschild Radius ($r_s$) & $2GM_{\mathrm{BH}}/c^2 \approx 0.5555$ \\
+ISCO Radius ($r_{\mathrm{ISCO}}$) & $3r_s \approx 1.6667$ \\
+Initial Disk Radii ($r_{\min}, r_{\max}$) & $r_{\min} = 2.5 \approx 4.5 r_s$, $r_{\max} \in [18.0, 20.0]$ \\
+Plummer Softening ($\epsilon$) & $0.08$ \\
+Barnes-Hut Opening Angle ($\theta$) & $0.6$ \\
+Integration Timestep ($\Delta t$) & $0.01$ \\
+Trajectory Length ($T$) & $60$ steps ($0.60$ simulation time units) \\
+\midrule
+State Dimension ($D$) & $102$ ($16 \times 6 + 6$) \\
 Diffusion Steps ($K$) & $20$ timesteps \\
-Beta Schedule & Cosine schedule (Nichol \& Dhariwal \cite{nichol2021improved}, $\beta_{\max}=0.1$) \\
-Target Variable & Standardized displacement $\Delta x_t = x_{t+1} - x_t$ \\
-Optimizer & AdamW ($\beta_1 = 0.9, \beta_2 = 0.999$, weight decay $10^{-4}$) \\
-Learning Rate & $1.5 \times 10^{-3}$ \\
-Batch Size & $64$ \\
-Training Epochs & $25$ epochs \\
-Probing Regularization & Linear Ridge Regression ($\alpha = 1.0$) \\
+Beta Variance Schedule & Cosine schedule ($\beta_{\max} = 0.1$, $s = 0.008$) \cite{nichol2021improved} \\
+Prediction Clamping & $[-3.5, 3.5]$ standardized units \\
+Optimization & AdamW ($\mathrm{lr} = 1.5 \times 10^{-3}$, weight decay $= 10^{-4}$) \\
+Batch Size & $64$ transitions \\
+Probing Regularization & Linear Ridge Regression with Cross-Validation ($\alpha \in [10^{-4}, 10^4]$) \\
 Random Seeds & $5$ independent seeds ($1, 2, 3, 4, 5$) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \section{Rollout Error Curves}
-Table~\ref{tab:rollout_curves} reports root mean square error curves across 30 integration steps for the zero-motion identity baseline, deterministic MLP, and diffusion surrogates.
+Table~\ref{tab:rollout_curves} reports root mean square error curves across 30 integration steps for the zero-motion identity baseline, deterministic MLP, and diffusion surrogates averaged across five random seeds.
 
 \begin{table}[H]
 \centering
 \small
-\caption{\textbf{Step-by-Step Rollout RMSE Across 30 Simulation Steps.}}
+\caption{\textbf{Step-by-Step Rollout RMSE Across 30 Simulation Steps (5-Seed Average).}}
 \label{tab:rollout_curves}
 \resizebox{\columnwidth}{!}{
 \begin{tabular}{ccccc}
@@ -377,14 +419,14 @@ Table~\ref{tab:rollout_curves} reports root mean square error curves across 30 i
 \textbf{Step} & \textbf{Identity Baseline} & \textbf{MLP Baseline ($d=32$)} & \textbf{Diffusion ($d=32$)} & \textbf{Diffusion ($d=128$)} \\
 \midrule
 0  & 0.000 & 0.000 & 0.000 & 0.000 \\
-5  & 0.820 & 1.205 & 4.127 & 4.262 \\
-10 & 1.624 & 2.421 & 7.650 & 9.932 \\
-15 & 2.394 & 3.641 & 11.101 & 15.418 \\
-20 & 3.117 & 4.860 & 14.736 & 20.873 \\
-25 & 3.779 & 6.063 & 18.337 & 26.390 \\
-30 & 4.372 & 7.224 & 21.926 & 32.256 \\
+5  & 0.820 & 1.193 & 4.091 & 4.000 \\
+10 & 1.624 & 2.353 & 7.600 & 8.970 \\
+15 & 2.394 & 3.477 & 11.239 & 13.901 \\
+20 & 3.117 & 4.569 & 15.028 & 18.957 \\
+25 & 3.779 & 5.620 & 18.709 & 24.079 \\
+30 & 4.372 & 6.622 & 22.416 & 29.276 \\
 \midrule
-\textbf{Mean RMSE} & \textbf{2.319} & \textbf{3.420} & \textbf{11.356} & \textbf{14.069} \\
+\textbf{Mean RMSE (Steps 0--30)} & \textbf{2.319} & \textbf{3.420} & \textbf{11.356} & \textbf{14.069} \\
 \bottomrule
 \end{tabular}
 }
