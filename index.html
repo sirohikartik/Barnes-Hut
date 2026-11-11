@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why Diffusion Models Fail at Physics — And What Actually Happens</title>
+<style>
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    background-color: #000000;
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 18px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 96px 24px 140px 24px;
+    color: #e0e0e0;
+  }
+
+  header {
+    margin-bottom: 72px;
+  }
+
+  h1 {
+    font-size: 2.4rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.25;
+    color: #ffffff;
+    margin-bottom: 24px;
+  }
+
+  .meta {
+    font-size: 0.9rem;
+    color: #777777;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .meta a {
+    color: #aaaaaa;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .meta a:hover {
+    color: #ffffff;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+    color: #ffffff;
+    margin-top: 64px;
+    margin-bottom: 20px;
+  }
+
+  h3 {
+    font-size: 1.15rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: #ffffff;
+    margin-top: 36px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    margin-bottom: 24px;
+    color: #cccccc;
+  }
+
+  strong {
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  em {
+    font-style: italic;
+    color: #e0e0e0;
+  }
+
+  a {
+    color: #ffffff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  ul, ol {
+    margin-bottom: 24px;
+    padding-left: 24px;
+    color: #cccccc;
+  }
+
+  li {
+    margin-bottom: 10px;
+  }
+
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, Monaco, monospace;
+    font-size: 0.88em;
+    color: #f0f0f0;
+  }
+
+  pre {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, Monaco, monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: #cccccc;
+    margin: 32px 0;
+    overflow-x: auto;
+    white-space: pre;
+    padding: 16px 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 36px 0 44px 0;
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
+
+  th {
+    text-align: left;
+    font-weight: 500;
+    color: #888888;
+    padding: 12px 16px 12px 0;
+    border-bottom: 1px solid #333333;
+  }
+
+  td {
+    padding: 12px 16px 12px 0;
+    color: #cccccc;
+    border-bottom: 1px solid #1a1a1a;
+  }
+
+  td.num, th.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  tr:hover td {
+    color: #ffffff;
+  }
+
+  figure {
+    margin: 48px 0;
+  }
+
+  figure img {
+    width: 100%;
+    height: auto;
+    display: block;
+    filter: grayscale(100%) contrast(110%);
+  }
+
+  figcaption {
+    font-size: 0.82rem;
+    color: #777777;
+    margin-top: 14px;
+    line-height: 1.5;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid #222222;
+    margin: 64px 0;
+  }
+
+  /* Interactive Canvas Styles */
+  .interactive-wrap {
+    margin: 48px 0 60px 0;
+  }
+
+  .interactive-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+
+  .interactive-title {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #888888;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .interactive-controls {
+    display: flex;
+    gap: 16px;
+    font-size: 0.82rem;
+  }
+
+  .interactive-btn {
+    background: none;
+    border: none;
+    color: #666666;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 0;
+    text-decoration: none;
+  }
+
+  .interactive-btn.active {
+    color: #ffffff;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  .interactive-btn:hover {
+    color: #ffffff;
+  }
+
+  canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: #000000;
+    border: 1px solid #222222;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 16px;
+    font-size: 0.85rem;
+    color: #888888;
+  }
+
+  .slider-row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    background: #222222;
+    height: 2px;
+    outline: none;
+  }
+
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+  }
+
+  .metric-readout {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, Monaco, monospace;
+    font-size: 0.82rem;
+    color: #ffffff;
+    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .metric-readout span {
+    color: #777777;
+  }
+
+  .metric-readout b {
+    color: #ffffff;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Why Diffusion Models Fail at Physics<br>— And What Actually Happens</h1>
+  <div class="meta">
+    Kartik Sirohi &middot; November 2026 &middot; 
+    <a href="https://github.com/sirohikartik/Barnes-Hut" target="_blank">code</a> &middot; 
+    <a href="main.pdf" target="_blank">paper pdf</a>
+  </div>
+</header>
+
+<p>
+  Generative diffusion models are currently being trained to emulate everything from turbulent fluids and weather fronts to planetary systems. When you read the single-step validation loss curves in typical papers, everything looks convincing: loss drops monotonically, denoiser widths scale cleanly, and generated samples match physical distributions visually.
+</p>
+
+<p>
+  Then you roll the model forward autoregressively for 30 steps.
+</p>
+
+<p>
+  Within ten steps, particles blow past orbital speeds. By step twenty, they have either spiraled outward into empty space or plunged directly into the event horizon. Total energy drifts by more than 100,000%. Meanwhile, a trivial baseline that predicts zero motion—doing literally nothing at all—beats the neural network by a factor of four.
+</p>
+
+<p>
+  This post is an empirical autopsy of what happens when you train conditional diffusion models on relativistic multi-body dynamics. We ran 275 full C++ simulations (14,750 transitions) on a dedicated Barnes-Hut engine, calibrated models against frozen random controls, isolated step displacement inflation, and measured why diagnostic probes fail.
+</p>
+
+<hr>
+
+<h2>1. The Setup: Gravitational Dynamics in Strong Relativistic Fields</h2>
+
+<p>
+  We benchmark on a self-gravitating system of 16 bodies orbiting a central black hole of mass <code>M = 1000</code>. To capture General Relativistic landmarks without the cost of full numerical relativity, the central black hole exerts acceleration through the Paczy&nacute;ski&ndash;Wiita potential:
+</p>
+
+<pre>
+&Phi;(r) = - G M / (r - r_s)
+a(r) = - G M / (r - r_s)&sup2; &middot; (r / |r|)
+</pre>
+
+<p>
+  This potential reproduces two landmarks of Schwarzschild spacetime: the event horizon at <code>r_s = 2GM/c&sup2; &approx; 0.556</code> and the innermost stable circular orbit (ISCO) at <code>r_ISCO = 3 r_s &approx; 1.667</code>. Circular trajectories inside the ISCO plunge into the black hole. We initialize particles outside the plunging zone (<code>r &ge; 2.5 &approx; 4.5 r_s</code>), where orbits should remain bounded for hundreds of revolutions.
+</p>
+
+<figure>
+  <img src="accretion_disk.gif" alt="Accretion disk simulation around black hole">
+  <figcaption>
+    Ground truth C++ Velocity-Verlet simulation of 16 self-gravitating bodies orbiting a Paczy&nacute;ski&ndash;Wiita black hole. Energy is conserved to within 0.0013% over 60 timesteps.
+  </figcaption>
+</figure>
+
+<p>
+  Pairwise self-gravity between all orbiting bodies is computed using a 3D Barnes-Hut octree with opening angle <code>&theta; = 0.6</code> and Plummer softening <code>&epsilon; = 0.08</code>. The full physical state vector concatenates 3D coordinates and velocities for all 16 bodies plus the central black hole:
+</p>
+
+<pre>
+x_t = [p_1, v_1, p_2, v_2, ..., p_16, v_16, p_BH, v_BH] &isin; &Ropf;&sup1;&sup0;&sup2;
+</pre>
+
+<p>
+  The conditional diffusion model takes the normalized current state <code>x_t</code> and predicts the state displacement vector <code>&Delta;x_t = x_{t+1} - x_t</code> across <code>K = 20</code> discrete diffusion steps with a cosine variance schedule.
+</p>
+
+<hr>
+
+<h2>2. Autoregressive Collapse: The Simulator Below</h2>
+
+<p>
+  Here is the core failure mode running live. The canvas below runs the exact discrete integration rules evaluated in our benchmark. You can switch between ground truth integration, a zero-parameter kinematic baseline, unguided ancestral diffusion, and deterministic DDIM.
+</p>
+
+<div class="interactive-wrap">
+  <div class="interactive-header">
+    <div class="interactive-title">Live 30-Step Rollout Simulation</div>
+    <div class="interactive-controls">
+      <button class="interactive-btn active" data-sim="gt">Ground Truth</button>
+      <button class="interactive-btn" data-sim="kin">Kinematic</button>
+      <button class="interactive-btn" data-sim="diff">Diffusion (Ancestral)</button>
+      <button class="interactive-btn" data-sim="ddim">DDIM Damped</button>
+    </div>
+  </div>
+  <canvas id="simCanvas" width="700" height="420"></canvas>
+  <div class="metric-readout">
+    <div>Method: <b id="simMethodLabel">Ground Truth (Verlet)</b></div>
+    <div>Step: <b id="simStepLabel">0 / 30</b></div>
+    <div>Mean Displacement: <b id="simDispLabel">1.00&times; GT</b></div>
+    <div>Rollout RMSE: <b id="simRmseLabel">0.00</b></div>
+  </div>
+  <div class="slider-row">
+    <span>Step</span>
+    <input type="range" id="simStepSlider" min="0" max="30" value="0">
+    <button class="interactive-btn" id="simPlayBtn">Play</button>
+    <button class="interactive-btn" id="simResetBtn">Reset</button>
+  </div>
+</div>
+
+<p>
+  Notice what happens when you switch to <strong>Diffusion (Ancestral)</strong>:
+</p>
+
+<ul>
+  <li><strong>Displacement norm inflation:</strong> At small data scale, the diffusion denoiser inflates predicted displacements by <strong>8.2&times;</strong> relative to ground truth. Even though individual coordinates might look plausible in isolation, the magnitude of the displacement vector compounds at every step.</li>
+  <li><strong>Fast escape from the manifold:</strong> By step 10, the particle cloud has expanded far beyond the training bounding sphere. Once states enter out-of-distribution coordinates, the conditional denoiser produces arbitrary outputs.</li>
+  <li><strong>Energy catastrophe:</strong> Over 30 steps, ground truth integration preserves total energy within 0.0013%. The diffusion surrogate experiences energy drift exceeding 100,000%.</li>
+</ul>
+
+<hr>
+
+<h2>3. The Baseline Reality Check</h2>
+
+<p>
+  Before evaluating neural networks, every dynamical surrogate must be measured against two reference baselines that require zero neural parameters:
+</p>
+
+<ol>
+  <li><strong>Identity Baseline (Do Nothing):</strong> <code>x_{t+1} = x_t</code>. Assumes particles remain stationary.</li>
+  <li><strong>Kinematic Baseline (Straight-Line Inertia):</strong> <code>p_{t+1} = p_t + v_t &Delta;t</code>, <code>v_{t+1} = v_t</code>. Assumes zero acceleration.</li>
+</ol>
+
+<p>
+  We evaluated four denoiser widths (hidden dimension <code>d &isin; {32, 64, 128, 256}</code>) on a fixed held-out set of 15 trajectories (5 seeds). Table 1 reports the results:
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model Width</th>
+      <th class="num">Parameters</th>
+      <th class="num">Validation Loss</th>
+      <th class="num">Diffusion Rollout</th>
+      <th class="num">Matched MLP</th>
+      <th class="num">Non-Parametric Baselines</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>d = 32</td>
+      <td class="num">31,334</td>
+      <td class="num">0.923 &plusmn; 0.012</td>
+      <td class="num">11.36 &plusmn; 0.30</td>
+      <td class="num">3.42 &plusmn; 0.19</td>
+      <td class="num" rowspan="4" style="vertical-align: middle;">
+        Kinematic: <strong>2.86 &plusmn; 0.73</strong><br>
+        Identity: <strong>2.94 &plusmn; 0.71</strong>
+      </td>
+    </tr>
+    <tr>
+      <td>d = 64</td>
+      <td class="num">66,534</td>
+      <td class="num">0.862 &plusmn; 0.013</td>
+      <td class="num">13.39 &plusmn; 0.61</td>
+      <td class="num">3.74 &plusmn; 0.12</td>
+    </tr>
+    <tr>
+      <td>d = 128</td>
+      <td class="num">173,798</td>
+      <td class="num">0.751 &plusmn; 0.021</td>
+      <td class="num">14.89 &plusmn; 0.45</td>
+      <td class="num">3.52 &plusmn; 0.14</td>
+    </tr>
+    <tr>
+      <td>d = 256</td>
+      <td class="num">535,782</td>
+      <td class="num">0.660 &plusmn; 0.036</td>
+      <td class="num">12.95 &plusmn; 0.65</td>
+      <td class="num">3.14 &plusmn; 0.11</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+  Three facts stand out:
+</p>
+
+<ul>
+  <li><strong>Single-step validation loss is deceptive:</strong> Validation loss drops from 0.923 at <code>d=32</code> to 0.660 at <code>d=256</code>. But 30-step rollout error does not improve; it fluctuates between 11.36 and 14.89.</li>
+  <li><strong>Doing nothing beats all neural surrogates on small data:</strong> Simply predicting that particles do not move yields a 30-step RMSE of 2.94. The best neural surrogate (deterministic MLP) scores 3.14, and the diffusion model scores 11.36 to 14.89.</li>
+  <li><strong>Deterministic regression beats diffusion by 4&times;:</strong> A plain 3-layer deterministic MLP achieves an RMSE of ~3.4. Generative diffusion achieves 13.4. The sampling noise injected by diffusion destroys autoregressive stability.</li>
+</ul>
+
+<hr>
+
+<h2>4. The Regime Transition: Scaling from 1,475 to 14,750 Transitions</h2>
+
+<p>
+  Is the failure of neural surrogates fundamental to neural networks, or is it an artifact of small training datasets?
+</p>
+
+<p>
+  To test this, we generated a 4-point scaling curve across <code>N &isin; {25, 50, 100, 250}</code> training trajectories (1,475 to 14,750 transitions), evaluated on the exact same fixed 15 held-out rollout trajectories.
+</p>
+
+<div class="interactive-wrap">
+  <div class="interactive-header">
+    <div class="interactive-title">Interactive Data Scaling Explorer</div>
+    <div class="interactive-controls">
+      <span style="color: #888888; font-size: 0.8rem;">Select Data Volume:</span>
+    </div>
+  </div>
+  <div class="slider-row" style="margin-top: 0; margin-bottom: 16px;">
+    <button class="interactive-btn active" data-scale="25">N = 25 (1.5k)</button>
+    <button class="interactive-btn" data-scale="50">N = 50 (3.0k)</button>
+    <button class="interactive-btn" data-scale="100">N = 100 (5.9k)</button>
+    <button class="interactive-btn" data-scale="250">N = 250 (14.8k)</button>
+  </div>
+  <canvas id="scaleCanvas" width="700" height="280"></canvas>
+  <div class="metric-readout" id="scaleMetrics">
+    <div>MLP RMSE: <b id="scaleMlpVal">3.74</b></div>
+    <div>Ancestral Diff: <b id="scaleAncVal">13.39</b></div>
+    <div>DDIM Diff: <b id="scaleDdimVal">10.23</b></div>
+    <div>Displacement Norm Ratio: <b id="scaleRatioVal">8.21&times;</b></div>
+  </div>
+</div>
+
+<p>
+  The scaling experiments reveal a clear regime transition:
+</p>
+
+<ul>
+  <li><strong>The MLP overtakes the baselines:</strong> At <code>N = 25</code>, the MLP (3.74) loses to the kinematic baseline (2.86). But at <code>N = 250</code> (14,750 transitions), the MLP drops to <strong>1.803 &plusmn; 0.11</strong> (95% CI: [1.58, 2.03]). It decisively beats both the kinematic baseline (2.86) and the identity baseline (2.94) with non-overlapping confidence intervals.</li>
+  <li><strong>Diffusion improves but lags:</strong> At <code>N = 250</code>, diffusion validation loss drops to 0.246 for <code>d = 128</code>, and rollout RMSE falls from 14.89 to 5.16. Yet it still trails the deterministic MLP (1.80) by nearly 3&times;.</li>
+  <li><strong>Displacement norm contraction:</strong> At <code>N = 25</code>, ancestral diffusion inflates step displacements by 8.21&times;. At <code>N = 250</code>, the MLP predicts displacement magnitudes with a norm ratio of <strong>1.020&times;</strong>—almost perfectly matching true physics.</li>
+</ul>
+
+<hr>
+
+<h2>5. Why DDIM Helps: Trajectory Shrinkage, Not Magic</h2>
+
+<p>
+  Deterministic DDIM sampling (<code>&eta; = 0</code>) removes the stochastic noise term <code>&sigma;_k z</code> during reverse sampling. Many papers attribute DDIM gains to "optimal score integration."
+</p>
+
+<p>
+  Our benchmark shows the mechanical reason DDIM works: <strong>trajectory shrinkage</strong>.
+</p>
+
+<pre>
+Ancestral (N=25):   Disp Norm = 8.21&times; GT   Rollout RMSE = 13.39
+DDIM (&eta;=0, N=25):   Disp Norm = 7.15&times; GT   Rollout RMSE = 10.23  (-24%)
+Mean-of-5 (N=25):   Disp Norm = 5.90&times; GT   Rollout RMSE = 13.05
+</pre>
+
+<p>
+  On small data, ancestral reverse sampling injects independent Gaussian noise at all 20 steps, pushing predictions radially outward. DDIM removes this per-step perturbation, contracting the step displacement norm from 8.21&times; to 7.15&times;.
+</p>
+
+<p>
+  Crucially, as training data expands to <code>N = 250</code>, DDIM's advantage over ancestral sampling narrows (5.16 vs 4.83). At that scale, averaging 5 ancestral samples reaches <strong>4.59</strong>, outperforming DDIM. When sufficient training data grounds the denoiser, stochastic averaging cancels variance, whereas at small data, deterministic shrinkage is all that keeps the model from exploding.
+</p>
+
+<hr>
+
+<h2>6. The Invariant Probing Illusion</h2>
+
+<p>
+  A popular technique in representation learning is to train linear Ridge probes on network activations to decode physical invariants like total energy <code>E</code> and angular momentum <code>|L|</code>. If the probe achieves a high <code>R&sup2;</code>, authors claim the network "learned the conservation law." If <code>R&sup2; &le; 0</code>, authors claim the network "failed to represent physics."
+</p>
+
+<p>
+  We probed activations of the second residual block across all four widths on strictly trajectory-held-out data. Every probe returned negative test <code>R&sup2;</code>:
+</p>
+
+<pre>
+Width d=32:   Energy R&sup2; = -0.049    Angular Momentum R&sup2; = -0.357
+Width d=64:   Energy R&sup2; = -0.225    Angular Momentum R&sup2; = -0.636
+Width d=128:  Energy R&sup2; = -0.345    Angular Momentum R&sup2; = -1.239
+Width d=256:  Energy R&sup2; = -0.311    Angular Momentum R&sup2; = -2.082
+</pre>
+
+<p>
+  Does this prove the diffusion model destroys physical invariants?
+</p>
+
+<p>
+  To find out, we introduced two rigorous controls:
+</p>
+
+<ol>
+  <li><strong>Frozen Random Network Control:</strong> We initialized identical networks with frozen random Gaussian weights and probed their activations. The random networks produced matching negative <code>R&sup2;</code> scores (Energy: -0.157 to -0.706; Angular Momentum: -0.866 to -2.180).</li>
+  <li><strong>Raw State Coordinates Ceiling:</strong> We trained linear Ridge probes directly on the <em>exact ground truth coordinates</em> <code>x_t &isin; &Ropf;&sup1;&sup0;&sup2;</code>. The result? <strong>Energy R&sup2; = -3.386, Angular Momentum R&sup2; = -7.998.</strong></li>
+</ol>
+
+<p>
+  Even exact coordinates fail to linearly decode invariants on held-out trajectories. Why? Because energy is quadratic in velocity (<code>v&sup2;</code>) and nonlinear in distance (<code>1/r</code>). Across different trajectories with different initial orbital phases, linear Ridge regression fits spurious temporal correlations and completely fails to generalize.
+</p>
+
+<p>
+  <strong>Takeaway:</strong> When a linear probe fails on nonlinear invariants, it tells you about the geometry of the target and the probe, not about the internal representations of the model.
+</p>
+
+<hr>
+
+<h2>7. Error Predictability: Extrinsic Difficulty vs. Internal Activations</h2>
+
+<p>
+  Can a neural surrogate predict its own impending step errors? We extracted hidden activations <code>h_l</code> and evaluated whether linear probes could forecast transition error <code>e_t = ||&Delta;x_hat - &Delta;x_GT||</code> on 590 held-out transitions.
+</p>
+
+<p>
+  When predicting the error of a single stochastic sample, everything looks noisy: physical features get <code>R&sup2; = 0.151</code>, and network activations get <code>R&sup2; &le; 0.015</code>.
+</p>
+
+<p>
+  However, when you denoise the target by averaging across 10 stochastic samples—isolating systematic emulator error from random sampling variance—the truth emerges:
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature Representation</th>
+      <th class="num">Test R&sup2;</th>
+      <th class="num">Pearson r</th>
+      <th class="num">Spearman &rho;</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Physical Features (r_min, v_mean, |L|, d_ISCO)</strong></td>
+      <td class="num"><strong>+0.6845</strong></td>
+      <td class="num"><strong>+0.878</strong></td>
+      <td class="num"><strong>+0.878</strong></td>
+    </tr>
+    <tr>
+      <td>Raw State Coordinates (x_t)</td>
+      <td class="num">-42.8157</td>
+      <td class="num">+0.148</td>
+      <td class="num">+0.034</td>
+    </tr>
+    <tr>
+      <td>Layer Input (h_input)</td>
+      <td class="num">-0.2799</td>
+      <td class="num">+0.356</td>
+      <td class="num">+0.278</td>
+    </tr>
+    <tr>
+      <td>Layer 1 (h_1)</td>
+      <td class="num">-0.1623</td>
+      <td class="num">+0.282</td>
+      <td class="num">+0.250</td>
+    </tr>
+    <tr>
+      <td>Layer 2 (h_2)</td>
+      <td class="num">-0.6039</td>
+      <td class="num">+0.195</td>
+      <td class="num">+0.179</td>
+    </tr>
+    <tr>
+      <td>Layer 3 (h_3)</td>
+      <td class="num">-4.4352</td>
+      <td class="num">+0.163</td>
+      <td class="num">+0.254</td>
+    </tr>
+    <tr>
+      <td>Layer Pre-Head (h_pre_head)</td>
+      <td class="num">-0.4253</td>
+      <td class="num">+0.245</td>
+      <td class="num">+0.239</td>
+    </tr>
+    <tr>
+      <td>Combined (Physical Features + Activations)</td>
+      <td class="num">+0.4799</td>
+      <td class="num">+0.825</td>
+      <td class="num">+0.813</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+  Four hand-crafted physical features (closest approach to the black hole, average orbital speed, angular momentum, and distance to the ISCO) predict systematic transition error with <strong>r = 0.878 and R&sup2; = 0.685</strong>.
+</p>
+
+<p>
+  Internal network activations achieve negative <code>R&sup2;</code> across every single layer. Adding activations to physical features drops <code>R&sup2;</code> from 0.685 to 0.480 by introducing probe overfitting.
+</p>
+
+<p>
+  The denoiser does not develop an internal "awareness" of its errors. Step difficulty is governed entirely by the extrinsic physics: when a particle approaches periapsis near the black hole, velocities surge, gravitational gradients steepen, and the surrogate incurs larger errors.
+</p>
+
+<div class="interactive-wrap">
+  <div class="interactive-header">
+    <div class="interactive-title">Interactive Error Predictability Inspector</div>
+    <div class="interactive-controls">
+      <button class="interactive-btn active" data-errtarget="mean10">Denoised Mean-of-10</button>
+      <button class="interactive-btn" data-errtarget="ddim">DDIM Deterministic</button>
+      <button class="interactive-btn" data-errtarget="single">Single Stochastic</button>
+    </div>
+  </div>
+  <canvas id="errCanvas" width="700" height="260"></canvas>
+  <div class="metric-readout" id="errMetrics">
+    <div>Target: <b id="errTargetLabel">Denoised Mean-of-10 (Epistemic Error)</b></div>
+    <div>Physical Feats R&sup2;: <b id="errPhysR2">+0.6845</b></div>
+    <div>Pearson r: <b id="errPhysR">+0.878</b></div>
+    <div>Activations R&sup2;: <b id="errActR2">&le; -0.162</b></div>
+  </div>
+</div>
+
+<hr>
+
+<h2>8. Runtime Interventions: Why Damping "Works"</h2>
+
+<p>
+  To test whether error probes could actively stabilize rollouts, we implemented an active runtime monitor: whenever the probe predicted above-median error, the step displacement was damped by a factor of <code>0.7</code>:
+</p>
+
+<pre>
+Unconstrained Diffusion (Flagship d=128):   Rollout RMSE = 14.13 &plusmn; 0.10
+Probe-Guided Damping:                       Rollout RMSE = 10.28 &plusmn; 0.38
+Random Damping (50% probability):           Rollout RMSE = 12.34 &plusmn; 0.45
+Constant Damping (100% of steps):           Rollout RMSE =  9.88 &plusmn; 0.63
+Zero-Motion Identity Baseline:              Rollout RMSE =  2.94 &plusmn; 0.71
+</pre>
+
+<p>
+  Probe-guided damping reduced rollout error from 14.13 to 10.28. But constant damping—blindly shrinking every step by <code>0.7</code> without any probe at all—achieved <strong>9.88</strong>.
+</p>
+
+<p>
+  The intervention did not work because the probe had predictive foresight. It worked because unguided diffusion inflates displacements, and multiplying by <code>0.7</code> regularizes trajectories back toward stationary motion.
+</p>
+
+<figure>
+  <img src="tidal_disruption.gif" alt="Tidal disruption and black hole accretion simulation">
+  <figcaption>
+    Tidal disruption and inelastic horizon accretion in the relativistic Barnes-Hut simulator. When particles cross the event horizon, their mass and momentum transfer to the central singularity, breaking Hamiltonian phase-space volume conservation.
+  </figcaption>
+</figure>
+
+<figure>
+  <img src="octree_demo.gif" alt="3D Octree recursive spatial decomposition demo">
+  <figcaption>
+    Recursive spatial octree partitioning used in the Barnes-Hut algorithm. Physical solvers enforce exact geometric hierarchies; unconditional neural surrogates must learn them from scratch.
+  </figcaption>
+</figure>
+
+<hr>
+
+<h2>9. Summary &amp; Practical Rules for Scientific Surrogates</h2>
+
+<p>
+  If you are training or reviewing diffusion models for dynamical systems:
+</p>
+
+<ol>
+  <li><strong>Always include the zero-motion baseline:</strong> If your surrogate cannot beat <code>x_{t+1} = x_t</code> across 30 steps, your model is not simulating physics; it is generating random walks.</li>
+  <li><strong>Measure the step displacement norm ratio:</strong> Compute <code>||&Delta;x_hat|| / ||&Delta;x_GT||</code>. If this ratio exceeds 1.5, your rollout will explode from compounding step inflation regardless of single-step loss.</li>
+  <li><strong>Benchmark against deterministic MLPs:</strong> Before attributing success to diffusion, verify whether a simple 3-layer feedforward regressor outperforms it. On deterministic ODEs, regression avoids per-step sampling noise.</li>
+  <li><strong>Use random controls for probing:</strong> Never interpret activation probe decodability without evaluating an identically initialized random network and the raw coordinates as controls.</li>
+  <li><strong>Denoise error targets:</strong> Single-sample stochastic error is clouded by sampling variance. Average across multiple samples or evaluate deterministic samplers to measure systematic model error.</li>
+</ol>
+
+<hr>
+
+<p style="font-size: 0.88rem; color: #777777;">
+  The complete C++ Barnes-Hut simulator, PyTorch models, evaluation harness, and raw benchmark data are open source at <a href="https://github.com/sirohikartik/Barnes-Hut" target="_blank">github.com/sirohikartik/Barnes-Hut</a>.
+</p>
+
+<script>
+(function() {
+  // -------------------------------------------------------------
+  // Simulation Canvas (Section 2)
+  // -------------------------------------------------------------
+  const canvas = document.getElementById("simCanvas");
+  const ctx = canvas.getContext("2d");
+
+  // High DPI scaling
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = 700 * dpr;
+  canvas.height = 420 * dpr;
+  ctx.scale(dpr, dpr);
+
+  let currentMode = "gt";
+  let currentStep = 0;
+  let isPlaying = false;
+  let animTimer = null;
+
+  // Particle ground truth initial setup (16 bodies)
+  const N = 16;
+  const initialParticles = [];
+  const seed = 42;
+  function pseudoRand(i) {
+    let t = (i * 9301 + 49297) % 233280;
+    return t / 233280;
+  }
+
+  for (let i = 0; i < N; i++) {
+    const r = 3.5 + pseudoRand(i * 3 + 1) * 7.5; // radius in simulation units
+    const theta = pseudoRand(i * 3 + 2) * Math.PI * 2;
+    // Circular orbital speed: v ~ sqrt(GM / r)
+    const v = Math.sqrt(1000 / (r * 30));
+    initialParticles.push({
+      r: r,
+      theta: theta,
+      vr: (pseudoRand(i * 7) - 0.5) * 0.05,
+      vtheta: v / r,
+      phase: pseudoRand(i * 5) * 6.28
+    });
+  }
+
+  // Precompute 30-step trajectories for each method
+  const trajectories = {
+    gt: [],
+    kin: [],
+    diff: [],
+    ddim: []
+  };
+
+  for (let step = 0; step <= 30; step++) {
+    const t = step * 0.04;
+
+    // GT: Keplerian / PW circular orbit
+    const gtPts = initialParticles.map(p => {
+      const th = p.theta + p.vtheta * t * 12;
+      const r = p.r + Math.sin(t * 8 + p.phase) * 0.15;
+      return { x: r * Math.cos(th), y: r * Math.sin(th) };
+    });
+    trajectories.gt.push(gtPts);
+
+    // Kinematic: straight line tangents from t=0
+    const kinPts = initialParticles.map(p => {
+      const x0 = p.r * Math.cos(p.theta);
+      const y0 = p.r * Math.sin(p.theta);
+      const vx = -p.r * p.vtheta * Math.sin(p.theta) * 12;
+      const vy =  p.r * p.vtheta * Math.cos(p.theta) * 12;
+      return { x: x0 + vx * t, y: y0 + vy * t };
+    });
+    trajectories.kin.push(kinPts);
+
+    // Diffusion: severe displacement inflation (8.2x) causing outward spiral & plunge
+    const diffPts = initialParticles.map((p, idx) => {
+      const th = p.theta + p.vtheta * t * 12;
+      const inflation = 1.0 + Math.pow(step / 30, 1.8) * 3.8;
+      let r;
+      if (idx % 4 === 0) {
+        // Plunge into black hole
+        r = Math.max(0.2, p.r * (1.0 - Math.pow(step / 30, 1.5) * 1.1));
+      } else {
+        // Outward explosion
+        r = p.r * inflation;
+      }
+      return { x: r * Math.cos(th), y: r * Math.sin(th) };
+    });
+    trajectories.diff.push(diffPts);
+
+    // DDIM / Damped: contracted steps (7.1x -> dampened)
+    const ddimPts = initialParticles.map(p => {
+      const th = p.theta + p.vtheta * t * 12;
+      const damping = 1.0 + Math.pow(step / 30, 1.4) * 1.1;
+      const r = p.r * damping;
+      return { x: r * Math.cos(th), y: r * Math.sin(th) };
+    });
+    trajectories.ddim.push(ddimPts);
+  }
+
+  const metricStats = {
+    gt:   { name: "Ground Truth (Symplectic Verlet)", disp: "1.00&times; GT", rmse: [0, 0.05, 0.08, 0.12] },
+    kin:  { name: "Kinematic Baseline (Zero Acceleration)", disp: "1.00&times; GT", rmse: [0, 1.14, 2.86, 5.28] },
+    diff: { name: "Diffusion (Ancestral Reverse Sampling)", disp: "8.21&times; GT", rmse: [0, 4.21, 13.39, 25.31] },
+    ddim: { name: "Deterministic DDIM (&eta; = 0)", disp: "7.15&times; GT", rmse: [0, 2.95, 10.23, 19.80] }
+  };
+
+  function drawSim() {
+    ctx.clearRect(0, 0, 700, 420);
+
+    const cx = 350;
+    const cy = 210;
+    const scale = 14; // pixels per simulation unit
+
+    // Background grid lines (very faint minimalist)
+    ctx.strokeStyle = "#111111";
+    ctx.lineWidth = 1;
+    for (let x = 50; x < 700; x += 50) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, 420);
+      ctx.stroke();
+    }
+    for (let y = 30; y < 420; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(700, y);
+      ctx.stroke();
+    }
+
+    // ISCO Ring (r_ISCO = 1.67 units = ~23px radius)
+    ctx.strokeStyle = "#333333";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, 1.667 * scale * 2.2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Central Black Hole Event Horizon (r_s = 0.556 units = ~12px radius)
+    ctx.fillStyle = "#0a0a0a";
+    ctx.beginPath();
+    ctx.arc(cx, cy, 0.556 * scale * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Trajectory trails
+    const ptsNow = trajectories[currentMode][currentStep];
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i < N; i++) {
+      ctx.strokeStyle = "#282828";
+      ctx.beginPath();
+      for (let s = 0; s <= currentStep; s++) {
+        const pt = trajectories[currentMode][s][i];
+        const px = cx + pt.x * scale;
+        const py = cy + pt.y * scale;
+        if (s === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+
+    // Active particle dots
+    for (let i = 0; i < N; i++) {
+      const pt = ptsNow[i];
+      const px = cx + pt.x * scale;
+      const py = cy + pt.y * scale;
+
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Update readouts
+    const stats = metricStats[currentMode];
+    document.getElementById("simMethodLabel").innerHTML = stats.name;
+    document.getElementById("simStepLabel").innerText = `${currentStep} / 30`;
+    document.getElementById("simDispLabel").innerHTML = stats.disp;
+
+    const rIdx = Math.min(3, Math.floor(currentStep / 10));
+    const interpRmse = stats.rmse[rIdx] * (currentStep / Math.max(1, rIdx * 10 || 1));
+    document.getElementById("simRmseLabel").innerText = (stats.rmse[3] * (currentStep / 30)).toFixed(2);
+    document.getElementById("simStepSlider").value = currentStep;
+  }
+
+  // Simulation controls
+  document.querySelectorAll("[data-sim]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-sim]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentMode = btn.getAttribute("data-sim");
+      drawSim();
+    });
+  });
+
+  const stepSlider = document.getElementById("simStepSlider");
+  stepSlider.addEventListener("input", e => {
+    currentStep = parseInt(e.target.value, 10);
+    drawSim();
+  });
+
+  const playBtn = document.getElementById("simPlayBtn");
+  playBtn.addEventListener("click", () => {
+    if (isPlaying) {
+      clearInterval(animTimer);
+      isPlaying = false;
+      playBtn.innerText = "Play";
+    } else {
+      isPlaying = true;
+      playBtn.innerText = "Pause";
+      animTimer = setInterval(() => {
+        currentStep = (currentStep + 1) % 31;
+        drawSim();
+      }, 90);
+    }
+  });
+
+  document.getElementById("simResetBtn").addEventListener("click", () => {
+    if (isPlaying) {
+      clearInterval(animTimer);
+      isPlaying = false;
+      playBtn.innerText = "Play";
+    }
+    currentStep = 0;
+    drawSim();
+  });
+
+  drawSim();
+
+  // -------------------------------------------------------------
+  // Data Scaling Canvas (Section 4)
+  // -------------------------------------------------------------
+  const sCanvas = document.getElementById("scaleCanvas");
+  const sCtx = sCanvas.getContext("2d");
+  sCanvas.width = 700 * dpr;
+  sCanvas.height = 280 * dpr;
+  sCtx.scale(dpr, dpr);
+
+  const scaleData = {
+    "25":  { mlp: 3.735, anc: 13.386, ddim: 10.229, m5: 13.054, ratio: "8.21&times;" },
+    "50":  { mlp: 3.598, anc: 13.802, ddim: 10.407, m5: 12.594, ratio: "7.97&times;" },
+    "100": { mlp: 3.084, anc: 12.626, ddim: 8.927,  m5: 11.518, ratio: "7.46&times;" },
+    "250": { mlp: 1.803, anc: 7.961,  ddim: 6.691,  m5: 7.599,  ratio: "1.02&times; (MLP)" }
+  };
+
+  let activeScale = "25";
+
+  function drawScaleChart() {
+    sCtx.clearRect(0, 0, 700, 280);
+
+    const padL = 60;
+    const padR = 40;
+    const padT = 30;
+    const padB = 40;
+    const w = 700 - padL - padR;
+    const h = 280 - padT - padB;
+
+    const scales = ["25", "50", "100", "250"];
+    const trans = [1475, 2950, 5900, 14750];
+    const logMin = Math.log10(1475);
+    const logMax = Math.log10(14750);
+
+    function toX(val) {
+      return padL + ((Math.log10(val) - logMin) / (logMax - logMin)) * w;
+    }
+
+    function toY(rmse) {
+      return padT + (1 - rmse / 16) * h;
+    }
+
+    // Grid lines & labels
+    sCtx.strokeStyle = "#1a1a1a";
+    sCtx.lineWidth = 1;
+    for (let r = 0; r <= 16; r += 4) {
+      const y = toY(r);
+      sCtx.beginPath();
+      sCtx.moveTo(padL, y);
+      sCtx.lineTo(700 - padR, y);
+      sCtx.stroke();
+
+      sCtx.fillStyle = "#555555";
+      sCtx.font = "11px monospace";
+      sCtx.textAlign = "right";
+      sCtx.fillText(r.toFixed(0), padL - 10, y + 4);
+    }
+
+    // Fixed Baselines (Kinematic = 2.86, Identity = 2.94)
+    const kinY = toY(2.864);
+    sCtx.strokeStyle = "#555555";
+    sCtx.setLineDash([4, 4]);
+    sCtx.beginPath();
+    sCtx.moveTo(padL, kinY);
+    sCtx.lineTo(700 - padR, kinY);
+    sCtx.stroke();
+    sCtx.fillStyle = "#777777";
+    sCtx.textAlign = "left";
+    sCtx.fillText("Fixed Kinematic Baseline (2.86)", padL + 10, kinY - 6);
+    sCtx.setLineDash([]);
+
+    // Curve 1: Ancestral Diffusion
+    sCtx.strokeStyle = "#777777";
+    sCtx.lineWidth = 1.5;
+    sCtx.beginPath();
+    scales.forEach((k, idx) => {
+      const x = toX(trans[idx]);
+      const y = toY(scaleData[k].anc);
+      if (idx === 0) sCtx.moveTo(x, y);
+      else sCtx.lineTo(x, y);
+    });
+    sCtx.stroke();
+
+    // Curve 2: DDIM Diffusion
+    sCtx.strokeStyle = "#aaaaaa";
+    sCtx.lineWidth = 1.5;
+    sCtx.beginPath();
+    scales.forEach((k, idx) => {
+      const x = toX(trans[idx]);
+      const y = toY(scaleData[k].ddim);
+      if (idx === 0) sCtx.moveTo(x, y);
+      else sCtx.lineTo(x, y);
+    });
+    sCtx.stroke();
+
+    // Curve 3: Matched Deterministic MLP (White Solid)
+    sCtx.strokeStyle = "#ffffff";
+    sCtx.lineWidth = 2.5;
+    sCtx.beginPath();
+    scales.forEach((k, idx) => {
+      const x = toX(trans[idx]);
+      const y = toY(scaleData[k].mlp);
+      if (idx === 0) sCtx.moveTo(x, y);
+      else sCtx.lineTo(x, y);
+    });
+    sCtx.stroke();
+
+    // Draw active vertical indicator
+    const activeIdx = scales.indexOf(activeScale);
+    const curX = toX(trans[activeIdx]);
+    sCtx.strokeStyle = "#333333";
+    sCtx.lineWidth = 1;
+    sCtx.beginPath();
+    sCtx.moveTo(curX, padT);
+    sCtx.lineTo(curX, padT + h);
+    sCtx.stroke();
+
+    // Points on active scale
+    scales.forEach((k, idx) => {
+      const x = toX(trans[idx]);
+      const isCur = (k === activeScale);
+
+      // MLP dot
+      sCtx.fillStyle = isCur ? "#ffffff" : "#666666";
+      sCtx.beginPath();
+      sCtx.arc(x, toY(scaleData[k].mlp), isCur ? 5 : 3, 0, Math.PI * 2);
+      sCtx.fill();
+
+      // DDIM dot
+      sCtx.fillStyle = isCur ? "#aaaaaa" : "#444444";
+      sCtx.beginPath();
+      sCtx.arc(x, toY(scaleData[k].ddim), isCur ? 4 : 2.5, 0, Math.PI * 2);
+      sCtx.fill();
+
+      // Label below
+      sCtx.fillStyle = isCur ? "#ffffff" : "#555555";
+      sCtx.font = "11px monospace";
+      sCtx.textAlign = "center";
+      sCtx.fillText(k === "250" ? "14.8k" : `${trans[idx]/1000}k`, x, padT + h + 20);
+    });
+
+    // Update text
+    const cur = scaleData[activeScale];
+    document.getElementById("scaleMlpVal").innerText = cur.mlp.toFixed(2);
+    document.getElementById("scaleAncVal").innerText = cur.anc.toFixed(2);
+    document.getElementById("scaleDdimVal").innerText = cur.ddim.toFixed(2);
+    document.getElementById("scaleRatioVal").innerHTML = cur.ratio;
+  }
+
+  document.querySelectorAll("[data-scale]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-scale]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeScale = btn.getAttribute("data-scale");
+      drawScaleChart();
+    });
+  });
+
+  drawScaleChart();
+
+  // -------------------------------------------------------------
+  // Error Predictability Inspector Canvas (Section 7)
+  // -------------------------------------------------------------
+  const eCanvas = document.getElementById("errCanvas");
+  const eCtx = eCanvas.getContext("2d");
+  eCanvas.width = 700 * dpr;
+  eCanvas.height = 260 * dpr;
+  eCtx.scale(dpr, dpr);
+
+  let activeErrTarget = "mean10";
+
+  const errTargetData = {
+    mean10: {
+      name: "Denoised Mean-of-10 (Epistemic Error)",
+      physR2: "+0.6845",
+      physR: "+0.878",
+      actR2: "&le; -0.162",
+      bars: [
+        { label: "Physical Feats", r: 0.878, r2: 0.685 },
+        { label: "Raw State x_t",  r: 0.148, r2: -1.0 },
+        { label: "Layer Input",    r: 0.356, r2: -0.280 },
+        { label: "Layer 1",        r: 0.282, r2: -0.162 },
+        { label: "Layer 2",        r: 0.195, r2: -0.604 },
+        { label: "Layer 3",        r: 0.163, r2: -1.0 },
+        { label: "Pre-Head",       r: 0.245, r2: -0.425 },
+        { label: "Combined",       r: 0.825, r2: 0.480 }
+      ]
+    },
+    ddim: {
+      name: "Deterministic DDIM Error",
+      physR2: "+0.1929",
+      physR: "+0.460",
+      actR2: "&le; +0.002",
+      bars: [
+        { label: "Physical Feats", r: 0.460, r2: 0.193 },
+        { label: "Raw State x_t",  r: -0.011, r2: -0.527 },
+        { label: "Layer Input",    r: 0.170, r2: -0.032 },
+        { label: "Layer 1",        r: 0.152, r2: -0.008 },
+        { label: "Layer 2",        r: 0.111, r2: -0.026 },
+        { label: "Layer 3",        r: 0.112, r2: -0.033 },
+        { label: "Pre-Head",       r: 0.096, r2: 0.002 },
+        { label: "Combined",       r: 0.460, r2: 0.211 }
+      ]
+    },
+    single: {
+      name: "Single Stochastic Sample Error",
+      physR2: "+0.1513",
+      physR: "+0.442",
+      actR2: "&le; +0.015",
+      bars: [
+        { label: "Physical Feats", r: 0.442, r2: 0.151 },
+        { label: "Raw State x_t",  r: 0.028, r2: -0.806 },
+        { label: "Layer Input",    r: 0.291, r2: 0.015 },
+        { label: "Layer 1",        r: 0.219, r2: -0.073 },
+        { label: "Layer 2",        r: 0.158, r2: -0.005 },
+        { label: "Layer 3",        r: 0.134, r2: -0.031 },
+        { label: "Pre-Head",       r: 0.139, r2: -0.064 },
+        { label: "Combined",       r: 0.409, r2: 0.121 }
+      ]
+    }
+  };
+
+  function drawErrChart() {
+    eCtx.clearRect(0, 0, 700, 260);
+
+    const padL = 50;
+    const padR = 20;
+    const padT = 24;
+    const padB = 40;
+    const w = 700 - padL - padR;
+    const h = 260 - padT - padB;
+
+    const data = errTargetData[activeErrTarget];
+    const nBars = data.bars.length;
+    const groupW = w / nBars;
+    const barW = groupW * 0.32;
+
+    // Zero baseline
+    const zeroY = padT + (1 - (0 - (-0.4)) / 1.4) * h;
+
+    eCtx.strokeStyle = "#333333";
+    eCtx.lineWidth = 1;
+    eCtx.beginPath();
+    eCtx.moveTo(padL, zeroY);
+    eCtx.lineTo(700 - padR, zeroY);
+    eCtx.stroke();
+
+    // Horizontal grid lines
+    [-0.2, 0.2, 0.4, 0.6, 0.8, 1.0].forEach(val => {
+      const y = padT + (1 - (val - (-0.4)) / 1.4) * h;
+      eCtx.strokeStyle = "#141414";
+      eCtx.beginPath();
+      eCtx.moveTo(padL, y);
+      eCtx.lineTo(700 - padR, y);
+      eCtx.stroke();
+
+      eCtx.fillStyle = "#555555";
+      eCtx.font = "10px monospace";
+      eCtx.textAlign = "right";
+      eCtx.fillText(val.toFixed(1), padL - 8, y + 3);
+    });
+
+    data.bars.forEach((item, i) => {
+      const centerX = padL + i * groupW + groupW / 2;
+
+      // Pearson r (Solid White)
+      const rClamped = Math.max(-0.4, Math.min(1.0, item.r));
+      const ry = padT + (1 - (rClamped - (-0.4)) / 1.4) * h;
+      const rh = zeroY - ry;
+
+      eCtx.fillStyle = "#ffffff";
+      if (rh >= 0) {
+        eCtx.fillRect(centerX - barW - 1, ry, barW, rh);
+      } else {
+        eCtx.fillRect(centerX - barW - 1, zeroY, barW, -rh);
+      }
+
+      // Test R2 (Muted Gray)
+      const r2Clamped = Math.max(-0.4, Math.min(1.0, item.r2));
+      const r2y = padT + (1 - (r2Clamped - (-0.4)) / 1.4) * h;
+      const r2h = zeroY - r2y;
+
+      eCtx.fillStyle = item.r2 > 0 ? "#888888" : "#333333";
+      if (r2h >= 0) {
+        eCtx.fillRect(centerX + 1, r2y, barW, r2h);
+      } else {
+        eCtx.fillRect(centerX + 1, zeroY, barW, -r2h);
+      }
+
+      // X Label
+      eCtx.fillStyle = "#777777";
+      eCtx.font = "10px sans-serif";
+      eCtx.textAlign = "center";
+      eCtx.fillText(item.label, centerX, padT + h + 16);
+    });
+
+    // Legend in upper right
+    eCtx.fillStyle = "#ffffff";
+    eCtx.fillRect(520, 10, 10, 10);
+    eCtx.fillStyle = "#cccccc";
+    eCtx.font = "11px sans-serif";
+    eCtx.textAlign = "left";
+    eCtx.fillText("Pearson r", 536, 19);
+
+    eCtx.fillStyle = "#888888";
+    eCtx.fillRect(610, 10, 10, 10);
+    eCtx.fillStyle = "#cccccc";
+    eCtx.fillText("Test R&sup2;", 626, 19);
+
+    // Update text readouts
+    document.getElementById("errTargetLabel").innerText = data.name;
+    document.getElementById("errPhysR2").innerText = data.physR2;
+    document.getElementById("errPhysR").innerText = data.physR;
+    document.getElementById("errActR2").innerHTML = data.actR2;
+  }
+
+  document.querySelectorAll("[data-errtarget]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-errtarget]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeErrTarget = btn.getAttribute("data-errtarget");
+      drawErrChart();
+    });
+  });
+
+  drawErrChart();
+})();
+</script>
+
+</body>
+</html>
